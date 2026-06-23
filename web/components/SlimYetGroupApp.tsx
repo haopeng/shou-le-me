@@ -104,81 +104,129 @@ function classNames(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
 
-function DeltaSparkline({
-  points,
-  winner
-}: {
-  points: GroupDashboard["members"][number]["sparkline"];
-  winner?: boolean;
-}) {
-  if (points.length < 2) {
-    return <div className="sparkline empty-line" aria-hidden="true" />;
-  }
-
-  const width = 160;
-  const height = 54;
-  const values = points.map((point) => point.deltaKg);
-  const min = Math.min(...values, -0.5);
-  const max = Math.max(...values, 0.5);
-  const range = max - min || 1;
-  const path = points
-    .map((point, index) => {
-      const x = (index / (points.length - 1)) * width;
-      const y = height - ((point.deltaKg - min) / range) * (height - 10) - 5;
-      return `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`;
-    })
-    .join(" ");
-
-  return (
-    <svg className="sparkline" viewBox={`0 0 ${width} ${height}`} role="img">
-      <path d={`M 0 ${height / 2} L ${width} ${height / 2}`} className="sparkline-zero" />
-      <path d={path} className={winner ? "sparkline-path winner" : "sparkline-path"} />
-    </svg>
-  );
-}
-
-function DeltaTrendChart({
-  points,
-  winner,
+function SharedTrendChart({
+  dashboard,
+  unit,
   language
 }: {
-  points: GroupDashboard["members"][number]["sparkline"];
-  winner?: boolean;
+  dashboard: GroupDashboard;
+  unit: WeightUnit;
   language: Language;
 }) {
-  if (points.length < 2) {
+  const plottedMembers = dashboard.members.filter((member) => member.sparkline.length >= 2);
+
+  if (!plottedMembers.length) {
     return <div className="trend-empty-line">{copy[language].noTrend}</div>;
   }
 
-  const width = 420;
-  const height = 150;
-  const values = points.map((point) => point.deltaKg);
-  const min = Math.min(...values, -0.5);
-  const max = Math.max(...values, 0.5);
+  const colors = ["#ff563f", "#24c6bc", "#7064ff", "#ffb84d", "#32a86d", "#d92d45"];
+  const width = 940;
+  const height = 280;
+  const padLeft = 58;
+  const padRight = 30;
+  const padTop = 24;
+  const padBottom = 44;
+  const dates = Array.from(
+    new Set(plottedMembers.flatMap((member) => member.sparkline.map((point) => point.date)))
+  ).sort((left, right) => left.localeCompare(right));
+  const dateIndex = new Map(dates.map((date, index) => [date, index]));
+  const values = plottedMembers.flatMap((member) => member.sparkline.map((point) => point.deltaKg));
+  const rawMin = Math.min(...values, -0.5);
+  const rawMax = Math.max(...values, 0.5);
+  const padding = Math.max(0.3, (rawMax - rawMin) * 0.14);
+  const min = Math.min(rawMin - padding, 0);
+  const max = Math.max(rawMax + padding, 0);
   const range = max - min || 1;
-  const yFor = (value: number) => height - 18 - ((value - min) / range) * (height - 34);
-  const xFor = (index: number) => 18 + (index / (points.length - 1)) * (width - 36);
-  const path = points
-    .map((point, index) => {
-      const command = index === 0 ? "M" : "L";
-      return `${command} ${xFor(index).toFixed(2)} ${yFor(point.deltaKg).toFixed(2)}`;
-    })
-    .join(" ");
-  const fillPath = `${path} L ${xFor(points.length - 1).toFixed(2)} ${height - 18} L 18 ${
-    height - 18
-  } Z`;
-  const latest = points.at(-1)!;
+  const chartWidth = width - padLeft - padRight;
+  const chartHeight = height - padTop - padBottom;
+  const xFor = (date: string) => {
+    const index = dateIndex.get(date) ?? 0;
+    return padLeft + (index / Math.max(1, dates.length - 1)) * chartWidth;
+  };
+  const yFor = (value: number) => padTop + ((max - value) / range) * chartHeight;
+  const axisValues = Array.from(new Set([roundOne(max), 0, roundOne(min)]));
 
   return (
-    <svg className="trend-plot" viewBox={`0 0 ${width} ${height}`} role="img">
-      <path
-        d={`M 18 ${yFor(0).toFixed(2)} L ${width - 18} ${yFor(0).toFixed(2)}`}
-        className="trend-zero"
-      />
-      <path d={fillPath} className={winner ? "trend-fill winner" : "trend-fill"} />
-      <path d={path} className={winner ? "trend-path winner" : "trend-path"} />
-      <circle cx={xFor(points.length - 1)} cy={yFor(latest.deltaKg)} r="6" className="trend-dot" />
-    </svg>
+    <div className="shared-trend-wrap">
+      <svg className="shared-trend-plot" viewBox={`0 0 ${width} ${height}`} role="img">
+        {axisValues.map((value) => (
+          <g key={value}>
+            <path
+              d={`M ${padLeft} ${yFor(value).toFixed(2)} L ${width - padRight} ${yFor(value).toFixed(2)}`}
+              className={value === 0 ? "shared-trend-zero" : "shared-trend-grid"}
+            />
+            <text x={16} y={yFor(value) + 4} className="shared-trend-axis-label">
+              {formatNumber(toDisplayWeight(value, unit))}
+            </text>
+          </g>
+        ))}
+
+        {plottedMembers.map((member, index) => {
+          const color = colors[index % colors.length];
+          const sortedPoints = member.sparkline
+            .slice()
+            .sort((left, right) => left.date.localeCompare(right.date));
+          const path = sortedPoints
+            .map((point, pointIndex) => {
+              const command = pointIndex === 0 ? "M" : "L";
+              return `${command} ${xFor(point.date).toFixed(2)} ${yFor(point.deltaKg).toFixed(2)}`;
+            })
+            .join(" ");
+          const latest = sortedPoints.at(-1)!;
+
+          return (
+            <g key={member.memberId}>
+              <path
+                d={path}
+                className={classNames("shared-trend-path", member.rank === 1 && "winner")}
+                style={{ stroke: color }}
+              />
+              <circle
+                cx={xFor(latest.date)}
+                cy={yFor(latest.deltaKg)}
+                r={member.rank === 1 ? 7 : 5}
+                className="shared-trend-dot"
+                style={{ fill: color }}
+              />
+              <text
+                x={Math.min(width - padRight - 76, xFor(latest.date) + 10)}
+                y={yFor(latest.deltaKg) + 4}
+                className="shared-trend-label"
+                style={{ fill: color }}
+              >
+                {member.displayName}
+              </text>
+            </g>
+          );
+        })}
+
+        {dates.length > 0 && (
+          <>
+            <text x={padLeft} y={height - 10} className="shared-trend-date-label">
+              {dates[0]}
+            </text>
+            <text x={width - padRight} y={height - 10} className="shared-trend-date-label end">
+              {dates.at(-1)}
+            </text>
+          </>
+        )}
+      </svg>
+
+      <div className="shared-trend-legend">
+        {plottedMembers.map((member, index) => {
+          const color = colors[index % colors.length];
+          return (
+            <span className={member.isMe ? "me" : ""} key={member.memberId}>
+              <i style={{ background: color }} />
+              {member.displayName}
+              <strong>
+                {member.deltaKg === null ? "--" : formatDeltaText(member.deltaKg, unit, language)}
+              </strong>
+            </span>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -426,6 +474,8 @@ function MemberTrendBoard({
         </div>
       </div>
 
+      <SharedTrendChart dashboard={dashboard} unit={unit} language={language} />
+
       <div className="trend-card-grid">
         {dashboard.members.map((member) => {
           const displayDelta =
@@ -455,8 +505,6 @@ function MemberTrendBoard({
                   <span>{t.delta}</span>
                 </div>
               </div>
-
-              <DeltaTrendChart points={member.sparkline} winner={winner} language={language} />
 
               <div className="highlight-list">
                 {member.highlights.map((highlight, index) => (
@@ -1767,7 +1815,6 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
                           )}
                         </div>
                       </div>
-                      <DeltaSparkline points={member.sparkline} winner={winner} />
                       <div className="delta-cell">
                         <strong
                           className={displayDelta !== null && displayDelta <= 0 ? "good" : "warm"}
@@ -2829,7 +2876,6 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                                   : <small>{t.noBase}</small>}
                             </div>
                           </div>
-                          <DeltaSparkline points={member.sparkline} winner={winner} />
                           <div className="delta-cell">
                             <strong
                               className={

@@ -716,6 +716,7 @@ label span {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
+  margin-top: 12px;
 }
 
 .trend-card {
@@ -769,44 +770,108 @@ label span {
   font-weight: 850;
 }
 
-.trend-plot {
+.shared-trend-wrap {
+  margin-top: 12px;
+  border: 1px solid rgba(31, 41, 51, 0.08);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.58)),
+    rgba(255, 255, 255, 0.74);
+  padding: 12px;
+}
+
+.shared-trend-plot {
   width: 100%;
   height: auto;
-  margin-top: 12px;
   overflow: visible;
 }
 
-.trend-zero {
+.shared-trend-grid,
+.shared-trend-zero {
   fill: none;
-  stroke: rgba(31, 41, 51, 0.14);
+  stroke: rgba(31, 41, 51, 0.1);
+  stroke-width: 1.5;
+}
+
+.shared-trend-zero {
+  stroke: rgba(31, 41, 51, 0.26);
   stroke-dasharray: 5 7;
-  stroke-width: 2;
 }
 
-.trend-fill {
-  fill: rgba(36, 198, 188, 0.12);
-}
-
-.trend-fill.winner {
-  fill: rgba(255, 86, 63, 0.12);
-}
-
-.trend-path {
+.shared-trend-path {
   fill: none;
-  stroke: var(--aqua);
-  stroke-width: 6;
+  stroke-width: 5;
   stroke-linecap: round;
   stroke-linejoin: round;
+  filter: drop-shadow(0 8px 10px rgba(31, 41, 51, 0.08));
 }
 
-.trend-path.winner {
-  stroke: var(--hot);
+.shared-trend-path.winner {
+  stroke-width: 6;
 }
 
-.trend-dot {
-  fill: #fff;
-  stroke: var(--hot);
+.shared-trend-dot {
+  stroke: #fff;
   stroke-width: 4;
+}
+
+.shared-trend-label,
+.shared-trend-axis-label,
+.shared-trend-date-label {
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.shared-trend-label {
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.88);
+  stroke-width: 4;
+}
+
+.shared-trend-axis-label,
+.shared-trend-date-label {
+  fill: var(--muted);
+}
+
+.shared-trend-date-label.end {
+  text-anchor: end;
+}
+
+.shared-trend-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.shared-trend-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  border: 1px solid rgba(31, 41, 51, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  padding: 0 10px;
+  color: #394657;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.shared-trend-legend span.me {
+  border-color: rgba(36, 198, 188, 0.28);
+  background: rgba(36, 198, 188, 0.12);
+}
+
+.shared-trend-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.shared-trend-legend strong {
+  color: var(--ink);
 }
 
 .trend-empty-line {
@@ -865,7 +930,7 @@ label span {
 
 .leader-row {
   display: grid;
-  grid-template-columns: 38px 42px minmax(140px, 1fr) minmax(100px, 160px) minmax(86px, 106px);
+  grid-template-columns: 38px 42px minmax(140px, 1fr) minmax(86px, 106px);
   align-items: center;
   gap: 10px;
   min-height: 74px;
@@ -1014,34 +1079,10 @@ label span {
   background: rgba(255, 184, 77, 0.16);
 }
 
-.sparkline {
-  width: 100%;
-  height: 54px;
-  overflow: visible;
-}
-
 .empty-line {
   height: 12px;
   border-radius: 999px;
   background: rgba(31, 41, 51, 0.08);
-}
-
-.sparkline-zero {
-  fill: none;
-  stroke: rgba(31, 41, 51, 0.13);
-  stroke-dasharray: 3 5;
-}
-
-.sparkline-path {
-  fill: none;
-  stroke: var(--aqua);
-  stroke-width: 5;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-
-.sparkline-path.winner {
-  stroke: var(--hot);
 }
 
 .delta-cell {
@@ -1361,11 +1402,6 @@ label span {
     grid-template-columns: 34px 38px minmax(0, 1fr) minmax(72px, auto);
   }
 
-  .leader-row .sparkline {
-    grid-column: 3 / -1;
-    order: 5;
-  }
-
   .delta-cell {
     justify-items: end;
   }
@@ -1396,10 +1432,6 @@ label span {
   .delta-cell {
     grid-column: 3;
     justify-items: start;
-  }
-
-  .leader-row .sparkline {
-    grid-column: 1 / -1;
   }
 
   .share-box {
