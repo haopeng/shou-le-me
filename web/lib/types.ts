@@ -1,5 +1,6 @@
 export type Language = "en" | "zh";
 export type WeightUnit = "kg" | "lb";
+export type ReactionType = "like" | "heart" | "care" | "thumbs_down";
 
 export type Profile = {
   id: string;
@@ -54,6 +55,21 @@ export type OwnLog = {
   deltaKg: number | null;
 };
 
+export type FeedItem = {
+  id: string;
+  actorUserId: string;
+  actorMemberId: string | null;
+  actorName: string;
+  actorAvatarUrl: string | null;
+  kind: "delta_update" | "first_delta" | "base_set";
+  recordedOn: string | null;
+  previousDeltaKg: number | null;
+  newDeltaKg: number | null;
+  createdAt: string;
+  reactionCounts: Record<ReactionType, number>;
+  myReaction: ReactionType | null;
+};
+
 export type GroupDashboard = {
   group: {
     id: string;
@@ -78,6 +94,7 @@ export type GroupDashboard = {
   };
   members: DashboardMember[];
   ownLogs: OwnLog[];
+  feed: FeedItem[];
 };
 
 export type ApiError = {

@@ -50,18 +50,28 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
   const { error: logError } = await auth.admin.from("slim_weight_logs").upsert(
     {
-      member_id: membership.id,
+      user_id: auth.user.id,
       recorded_on: baseDate,
       weight_kg: baseWeightKg,
       note: null,
       updated_at: new Date().toISOString()
     },
-    { onConflict: "member_id,recorded_on" }
+    { onConflict: "user_id,recorded_on" }
   );
 
   if (logError) {
     return jsonError(logError.message, 500);
   }
+
+  await auth.admin.from("slim_feed_items").insert({
+    group_id: groupId,
+    actor_user_id: auth.user.id,
+    actor_member_id: membership.id,
+    kind: "base_set",
+    recorded_on: baseDate,
+    previous_delta_kg: null,
+    new_delta_kg: null
+  });
 
   return NextResponse.json({ ok: true });
 }

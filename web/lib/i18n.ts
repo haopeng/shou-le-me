@@ -40,6 +40,8 @@ export const copy = {
     weight: "Weight",
     note: "Note",
     saveLog: "Save log",
+    feed: "Group feed",
+    noFeed: "No group sparks yet. Log a weight to start the cheers.",
     leaderboard: "Delta board",
     stream: "Momentum stream",
     myLogs: "My logs",
@@ -76,7 +78,19 @@ export const copy = {
     backHome: "Back home",
     joining: "Joining...",
     joined: "You joined the group.",
-    unit: "Unit"
+    unit: "Unit",
+    feedFirstDelta: "shared a first delta of",
+    feedDeltaChanged: "delta changed from",
+    feedDeltaTo: "to",
+    feedBaseSet: "joined the board with a private base",
+    feedBigAchievement: "big achievement",
+    feedNiceMove: "nice move",
+    feedBelowBase: "still below base",
+    feedShowingUp: "showing up counts",
+    reactionLike: "Like",
+    reactionHeart: "Heart",
+    reactionCare: "Care",
+    reactionThumbsDown: "Thumbs down"
   },
   zh: {
     appName: "Slim Yet?",
@@ -117,6 +131,8 @@ export const copy = {
     weight: "体重",
     note: "备注",
     saveLog: "保存记录",
+    feed: "小组动态",
+    noFeed: "还没有小组动态。记录一次体重，开始互相打气吧。",
     leaderboard: "变化榜",
     stream: "趋势流",
     myLogs: "我的记录",
@@ -153,7 +169,19 @@ export const copy = {
     backHome: "回首页",
     joining: "加入中...",
     joined: "已加入小组。",
-    unit: "单位"
+    unit: "单位",
+    feedFirstDelta: "分享了第一次变化",
+    feedDeltaChanged: "变化从",
+    feedDeltaTo: "变成",
+    feedBaseSet: "用私密基准加入了榜单",
+    feedBigAchievement: "很棒的进步",
+    feedNiceMove: "漂亮",
+    feedBelowBase: "继续低于基准",
+    feedShowingUp: "坚持出现就很重要",
+    reactionLike: "赞",
+    reactionHeart: "喜欢",
+    reactionCare: "关心",
+    reactionThumbsDown: "踩一下"
   }
 } satisfies Record<Language, Record<string, string>>;
 

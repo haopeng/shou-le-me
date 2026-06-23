@@ -12,7 +12,9 @@ Group weight tracking with private baselines and public delta competition.
 
 ## Privacy Model
 
-Each group member chooses a private base weight and date. Other members only see delta values, ranks, badges, and delta sparklines. A user can still see their own real weight history and graph.
+Each user keeps one personal weight history. The same user can join or create many groups, and each group membership can choose a different private base weight and date. Other members only see delta values, ranks, badges, delta sparklines, and feed updates. A user can still see their own real weight history and graph.
+
+When a user logs a new weight, the API recomputes that user's current delta for every group where they have a private base, then writes friendly feed updates such as a delta moving from one value to another. Group members can react with like, heart, care, or thumbs down.
 
 The browser uses Supabase Auth for login. All group and weight data flows through Next.js API routes that validate the Supabase session and query Postgres with the service role key.
 

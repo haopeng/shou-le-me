@@ -871,6 +871,69 @@ label span {
   gap: 8px;
 }
 
+.feed-list {
+  display: grid;
+  gap: 10px;
+}
+
+.feed-item {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 10px;
+  border: 1px solid rgba(31, 41, 51, 0.08);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 10px;
+}
+
+.feed-main {
+  min-width: 0;
+}
+
+.feed-main p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.91rem;
+  font-weight: 780;
+  line-height: 1.35;
+}
+
+.feed-main time {
+  display: block;
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.reaction-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 9px;
+}
+
+.reaction-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 46px;
+  min-height: 30px;
+  border: 1px solid rgba(31, 41, 51, 0.08);
+  border-radius: 999px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.reaction-button.active {
+  border-color: rgba(255, 86, 63, 0.22);
+  color: var(--hot-deep);
+  background: rgba(255, 86, 63, 0.12);
+}
+
 .log-row {
   display: grid;
   grid-template-columns: minmax(86px, 1fr) auto auto 34px;

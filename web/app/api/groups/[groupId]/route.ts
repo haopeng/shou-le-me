@@ -35,12 +35,35 @@ type ProfileRow = {
 
 type WeightLogRow = {
   id: string;
-  member_id: string;
+  user_id: string;
   recorded_on: string;
   weight_kg: number | string;
   note: string | null;
   created_at: string;
 };
+
+type FeedKind = "delta_update" | "first_delta" | "base_set";
+type ReactionType = "like" | "heart" | "care" | "thumbs_down";
+
+type FeedRow = {
+  id: string;
+  group_id: string;
+  actor_user_id: string;
+  actor_member_id: string | null;
+  kind: FeedKind;
+  recorded_on: string | null;
+  previous_delta_kg: number | string | null;
+  new_delta_kg: number | string | null;
+  created_at: string;
+};
+
+type ReactionRow = {
+  feed_item_id: string;
+  user_id: string;
+  reaction: ReactionType;
+};
+
+const reactionTypes: ReactionType[] = ["like", "heart", "care", "thumbs_down"];
 
 function numberOrNull(value: number | string | null | undefined) {
   if (value === null || value === undefined) {
@@ -133,7 +156,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   const memberRows = (members ?? []) as MemberRow[];
-  const memberIds = memberRows.map((member) => member.id);
   const userIds = memberRows.map((member) => member.user_id);
 
   const profilesById = new Map<string, ProfileRow>();
@@ -153,13 +175,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
   }
 
-  const logsByMember = new Map<string, WeightLogRow[]>();
+  const logsByUser = new Map<string, WeightLogRow[]>();
 
-  if (memberIds.length) {
+  if (userIds.length) {
     const { data: logs, error: logsError } = await auth.admin
       .from("slim_weight_logs")
-      .select("id,member_id,recorded_on,weight_kg,note,created_at")
-      .in("member_id", memberIds)
+      .select("id,user_id,recorded_on,weight_kg,note,created_at")
+      .in("user_id", userIds)
       .order("recorded_on", { ascending: true });
 
     if (logsError) {
@@ -167,14 +189,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
     }
 
     for (const log of (logs ?? []) as WeightLogRow[]) {
-      const existing = logsByMember.get(log.member_id) ?? [];
+      const existing = logsByUser.get(log.user_id) ?? [];
       existing.push(log);
-      logsByMember.set(log.member_id, existing);
+      logsByUser.set(log.user_id, existing);
     }
   }
 
   const computed = memberRows.map((member) => {
-    const logs = logsByMember.get(member.id) ?? [];
+    const logs = logsByUser.get(member.user_id) ?? [];
     const baseWeight = numberOrNull(member.base_weight_kg);
     const latestLog = logs.at(-1) ?? null;
     const latestWeight = latestLog ? Number(latestLog.weight_kg) : null;
@@ -249,7 +271,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return left.joinedAt.localeCompare(right.joinedAt);
     });
 
-  const ownLogs = (logsByMember.get(membership.id) ?? []).map((log) => {
+  const ownLogs = (logsByUser.get(auth.user.id) ?? []).map((log) => {
     const weightKg = Number(log.weight_kg);
     const baseWeight = numberOrNull(membership.base_weight_kg);
     return {
@@ -264,6 +286,72 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const deltas = computed
     .map((entry) => entry.deltaKg)
     .filter((delta): delta is number => delta !== null);
+
+  const { data: feedItems, error: feedError } = await auth.admin
+    .from("slim_feed_items")
+    .select(
+      "id,group_id,actor_user_id,actor_member_id,kind,recorded_on,previous_delta_kg,new_delta_kg,created_at"
+    )
+    .eq("group_id", groupId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+
+  if (feedError) {
+    return jsonError(feedError.message, 500);
+  }
+
+  const feedRows = (feedItems ?? []) as FeedRow[];
+  const feedIds = feedRows.map((item) => item.id);
+  const reactionsByFeed = new Map<string, ReactionRow[]>();
+
+  if (feedIds.length) {
+    const { data: reactions, error: reactionsError } = await auth.admin
+      .from("slim_feed_reactions")
+      .select("feed_item_id,user_id,reaction")
+      .in("feed_item_id", feedIds);
+
+    if (reactionsError) {
+      return jsonError(reactionsError.message, 500);
+    }
+
+    for (const reaction of (reactions ?? []) as ReactionRow[]) {
+      const existing = reactionsByFeed.get(reaction.feed_item_id) ?? [];
+      existing.push(reaction);
+      reactionsByFeed.set(reaction.feed_item_id, existing);
+    }
+  }
+
+  const feed = feedRows.map((item) => {
+    const profile = profilesById.get(item.actor_user_id);
+    const reactionCounts = reactionTypes.reduce(
+      (counts, reaction) => ({ ...counts, [reaction]: 0 }),
+      {} as Record<ReactionType, number>
+    );
+    let myReaction: ReactionType | null = null;
+
+    for (const reaction of reactionsByFeed.get(item.id) ?? []) {
+      reactionCounts[reaction.reaction] += 1;
+      if (reaction.user_id === auth.user.id) {
+        myReaction = reaction.reaction;
+      }
+    }
+
+    return {
+      id: item.id,
+      actorUserId: item.actor_user_id,
+      actorMemberId: item.actor_member_id,
+      actorName:
+        profile?.nickname || profile?.full_name || profile?.email?.split("@")[0] || "Member",
+      actorAvatarUrl: profile?.avatar_url ?? null,
+      kind: item.kind,
+      recordedOn: item.recorded_on,
+      previousDeltaKg: numberOrNull(item.previous_delta_kg),
+      newDeltaKg: numberOrNull(item.new_delta_kg),
+      createdAt: item.created_at,
+      reactionCounts,
+      myReaction
+    };
+  });
 
   return NextResponse.json({
     group: {
@@ -290,6 +378,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       bestDeltaKg: deltas.length ? roundTenth(Math.min(...deltas)) : null
     },
     members: membersPayload,
-    ownLogs
+    ownLogs,
+    feed
   });
 }

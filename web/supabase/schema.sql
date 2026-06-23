@@ -46,19 +46,60 @@ create table if not exists public.slim_group_members (
 
 create table if not exists public.slim_weight_logs (
   id uuid primary key default gen_random_uuid(),
-  member_id uuid not null references public.slim_group_members(id) on delete cascade,
+  user_id uuid not null references public.slim_profiles(id) on delete cascade,
   recorded_on date not null,
   weight_kg numeric(5, 1) not null check (weight_kg between 20 and 400),
   note text,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  unique (member_id, recorded_on)
+  updated_at timestamptz not null default now()
 );
+
+create table if not exists public.slim_feed_items (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references public.slim_groups(id) on delete cascade,
+  actor_user_id uuid not null references public.slim_profiles(id) on delete cascade,
+  actor_member_id uuid references public.slim_group_members(id) on delete set null,
+  kind text not null check (kind in ('delta_update', 'first_delta', 'base_set')),
+  recorded_on date,
+  previous_delta_kg numeric(6, 1),
+  new_delta_kg numeric(6, 1),
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.slim_feed_reactions (
+  id uuid primary key default gen_random_uuid(),
+  feed_item_id uuid not null references public.slim_feed_items(id) on delete cascade,
+  user_id uuid not null references public.slim_profiles(id) on delete cascade,
+  reaction text not null check (reaction in ('like', 'heart', 'care', 'thumbs_down')),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (feed_item_id, user_id)
+);
+
+alter table public.slim_weight_logs
+add column if not exists user_id uuid references public.slim_profiles(id) on delete cascade;
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'slim_weight_logs'
+      and column_name = 'member_id'
+  ) then
+    alter table public.slim_weight_logs alter column member_id drop not null;
+  end if;
+end;
+$$;
 
 create index if not exists slim_groups_invite_code_idx on public.slim_groups(invite_code);
 create index if not exists slim_group_members_user_id_idx on public.slim_group_members(user_id);
 create index if not exists slim_group_members_group_id_idx on public.slim_group_members(group_id);
-create index if not exists slim_weight_logs_member_date_idx on public.slim_weight_logs(member_id, recorded_on);
+create unique index if not exists slim_weight_logs_user_date_idx on public.slim_weight_logs(user_id, recorded_on);
+create index if not exists slim_feed_items_group_created_idx on public.slim_feed_items(group_id, created_at desc);
+create index if not exists slim_feed_items_actor_idx on public.slim_feed_items(actor_user_id);
+create index if not exists slim_feed_reactions_feed_idx on public.slim_feed_reactions(feed_item_id);
 
 drop trigger if exists slim_profiles_set_updated_at on public.slim_profiles;
 create trigger slim_profiles_set_updated_at
@@ -78,6 +119,11 @@ for each row execute function public.set_updated_at();
 drop trigger if exists slim_weight_logs_set_updated_at on public.slim_weight_logs;
 create trigger slim_weight_logs_set_updated_at
 before update on public.slim_weight_logs
+for each row execute function public.set_updated_at();
+
+drop trigger if exists slim_feed_reactions_set_updated_at on public.slim_feed_reactions;
+create trigger slim_feed_reactions_set_updated_at
+before update on public.slim_feed_reactions
 for each row execute function public.set_updated_at();
 
 create or replace function public.handle_new_user()
@@ -109,6 +155,8 @@ alter table public.slim_profiles enable row level security;
 alter table public.slim_groups enable row level security;
 alter table public.slim_group_members enable row level security;
 alter table public.slim_weight_logs enable row level security;
+alter table public.slim_feed_items enable row level security;
+alter table public.slim_feed_reactions enable row level security;
 
 drop policy if exists "slim_profiles_select_own" on public.slim_profiles;
 create policy "slim_profiles_select_own"
@@ -132,6 +180,6 @@ for insert
 to authenticated
 with check (auth.uid() = id);
 
--- Groups, memberships, and weight logs intentionally have no direct browser policies.
+-- Groups, memberships, weight logs, feed items, and reactions intentionally have no direct browser policies.
 -- The Next.js API uses the Supabase service role and returns only privacy-safe data:
 -- other members' deltas, never their actual base or current weights.

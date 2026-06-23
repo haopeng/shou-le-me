@@ -7,6 +7,7 @@ import {
   Clipboard,
   Flame,
   Gauge,
+  Heart,
   Image as ImageIcon,
   Languages,
   LineChart,
@@ -19,6 +20,9 @@ import {
   RefreshCcw,
   ShieldCheck,
   Sparkles,
+  Smile,
+  ThumbsDown,
+  ThumbsUp,
   Trash2,
   Trophy,
   UserRound,
@@ -26,11 +30,19 @@ import {
   Weight
 } from "lucide-react";
 import Image from "next/image";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { copy, getInitialLanguage } from "@/lib/i18n";
 import { hasSupabaseConfig, supabase } from "@/lib/supabaseClient";
-import type { GroupDashboard, GroupSummary, Language, Profile, WeightUnit } from "@/lib/types";
+import type {
+  FeedItem,
+  GroupDashboard,
+  GroupSummary,
+  Language,
+  Profile,
+  ReactionType,
+  WeightUnit
+} from "@/lib/types";
 
 type AuthMode = "signin" | "signup" | "reset" | "recover";
 
@@ -229,6 +241,149 @@ function OwnWeightChart({
           {formatNumber(low)} {t[unit]}
         </text>
       </svg>
+    </section>
+  );
+}
+
+function formatDeltaText(deltaKg: number, unit: WeightUnit, language: Language) {
+  const value = toDisplayWeight(deltaKg, unit);
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${formatNumber(value)} ${copy[language][unit]}`;
+}
+
+function feedCheer(item: FeedItem, language: Language) {
+  const t = copy[language];
+
+  if (item.previousDeltaKg !== null && item.newDeltaKg !== null) {
+    const improvement = item.previousDeltaKg - item.newDeltaKg;
+    if (improvement >= 0.5) {
+      return t.feedBigAchievement;
+    }
+    if (improvement > 0) {
+      return t.feedNiceMove;
+    }
+  }
+
+  if (item.newDeltaKg !== null && item.newDeltaKg <= 0) {
+    return t.feedBelowBase;
+  }
+
+  return t.feedShowingUp;
+}
+
+function feedSentence(item: FeedItem, unit: WeightUnit, language: Language) {
+  const t = copy[language];
+
+  if (item.kind === "base_set") {
+    return `${item.actorName} ${t.feedBaseSet}.`;
+  }
+
+  if (item.previousDeltaKg === null && item.newDeltaKg !== null) {
+    return `${item.actorName} ${t.feedFirstDelta} ${formatDeltaText(
+      item.newDeltaKg,
+      unit,
+      language
+    )}. ${feedCheer(item, language)}.`;
+  }
+
+  if (item.previousDeltaKg !== null && item.newDeltaKg !== null) {
+    if (language === "zh") {
+      return `${item.actorName}的${t.feedDeltaChanged} ${formatDeltaText(
+        item.previousDeltaKg,
+        unit,
+        language
+      )} ${t.feedDeltaTo} ${formatDeltaText(item.newDeltaKg, unit, language)}. ${feedCheer(
+        item,
+        language
+      )}.`;
+    }
+
+    return `${item.actorName}'s ${t.feedDeltaChanged} ${formatDeltaText(
+      item.previousDeltaKg,
+      unit,
+      language
+    )} ${t.feedDeltaTo} ${formatDeltaText(item.newDeltaKg, unit, language)}. ${feedCheer(
+      item,
+      language
+    )}.`;
+  }
+
+  return `${item.actorName} ${t.feedShowingUp}.`;
+}
+
+function FeedPanel({
+  dashboard,
+  unit,
+  language,
+  onReact,
+  busy
+}: {
+  dashboard: GroupDashboard;
+  unit: WeightUnit;
+  language: Language;
+  onReact: (feedId: string, reaction: ReactionType) => Promise<void>;
+  busy: string | null;
+}) {
+  const t = copy[language];
+  const reactionMeta: Record<
+    ReactionType,
+    {
+      label: string;
+      icon: ReactNode;
+    }
+  > = {
+    like: { label: t.reactionLike, icon: <ThumbsUp size={15} /> },
+    heart: { label: t.reactionHeart, icon: <Heart size={15} /> },
+    care: { label: t.reactionCare, icon: <Smile size={15} /> },
+    thumbs_down: { label: t.reactionThumbsDown, icon: <ThumbsDown size={15} /> }
+  };
+
+  return (
+    <section className="panel feed-panel">
+      <div className="panel-title">
+        <Sparkles size={18} />
+        <span>{t.feed}</span>
+      </div>
+      <div className="feed-list">
+        {dashboard.feed.length ? (
+          dashboard.feed.map((item) => (
+            <article className="feed-item" key={item.id}>
+              <Avatar name={item.actorName} url={item.actorAvatarUrl} />
+              <div className="feed-main">
+                <p>{feedSentence(item, unit, language)}</p>
+                <time dateTime={item.createdAt}>
+                  {new Date(item.createdAt).toLocaleString(language === "zh" ? "zh-CN" : "en-US", {
+                    month: "short",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit"
+                  })}
+                </time>
+                <div className="reaction-row">
+                  {(Object.keys(reactionMeta) as ReactionType[]).map((reaction) => (
+                    <button
+                      className={classNames(
+                        "reaction-button",
+                        item.myReaction === reaction && "active"
+                      )}
+                      disabled={busy === `react-${item.id}-${reaction}`}
+                      key={reaction}
+                      onClick={() => onReact(item.id, reaction)}
+                      title={reactionMeta[reaction].label}
+                      type="button"
+                    >
+                      {reactionMeta[reaction].icon}
+                      <span>{item.reactionCounts[reaction]}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </article>
+          ))
+        ) : (
+          <div className="empty-state">{t.noFeed}</div>
+        )}
+      </div>
     </section>
   );
 }
@@ -598,6 +753,20 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     await run("delete", async () => {
       await apiFetch(`/api/groups/${selectedGroupId}/logs?date=${date}`, {
         method: "DELETE"
+      });
+      await loadDashboard(selectedGroupId);
+    });
+  }
+
+  async function handleReaction(feedId: string, reaction: ReactionType) {
+    if (!selectedGroupId) {
+      return;
+    }
+
+    await run(`react-${feedId}-${reaction}`, async () => {
+      await apiFetch(`/api/groups/${selectedGroupId}/feed/${feedId}/reactions`, {
+        method: "POST",
+        body: JSON.stringify({ reaction })
       });
       await loadDashboard(selectedGroupId);
     });
@@ -1156,6 +1325,14 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                 </section>
 
                 <div className="right-stack">
+                  <FeedPanel
+                    busy={busy}
+                    dashboard={dashboard}
+                    language={language}
+                    onReact={handleReaction}
+                    unit={unit}
+                  />
+
                   <OwnWeightChart dashboard={dashboard} unit={unit} language={language} />
 
                   <section className="panel logs-panel">
