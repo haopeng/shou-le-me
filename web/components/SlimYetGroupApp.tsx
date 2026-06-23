@@ -32,7 +32,13 @@ import {
 import Image from "next/image";
 import { FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { copy, getInitialLanguage } from "@/lib/i18n";
+import {
+  copy,
+  getInitialLanguage,
+  getUrlLanguage,
+  setUrlLanguage,
+  withLanguageParam
+} from "@/lib/i18n";
 import { hasSupabaseConfig, supabase } from "@/lib/supabaseClient";
 import type {
   FeedItem,
@@ -959,11 +965,19 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
   const selectedGroup =
     state.groups.find((group) => group.id === state.selectedGroupId) ?? state.groups[0];
   const topMember = dashboard.members.find((member) => member.rank === 1) ?? null;
-  const shareLink = `${origin.replace(/\/$/, "")}/join/${dashboard.group.inviteCode}`;
+  const shareLink = withLanguageParam(
+    `${origin.replace(/\/$/, "")}/join/${dashboard.group.inviteCode}`,
+    language
+  );
   const readyToCompete = dashboard.me.baseReady;
   const languageButtonLabel = language === "en" ? "中文" : "EN";
   const labelForBadge = (badge: string) =>
     badge in t ? t[badge as keyof typeof t] : badge.replace(/^badge/, "");
+
+  function chooseLanguage(nextLanguage: Language) {
+    setLanguage(nextLanguage);
+    setUrlLanguage(nextLanguage);
+  }
 
   useEffect(() => {
     const initialLanguage = getInitialLanguage();
@@ -1392,7 +1406,7 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
           <button
             className="icon-button language-button"
             type="button"
-            onClick={() => setLanguage(language === "en" ? "zh" : "en")}
+            onClick={() => chooseLanguage(language === "en" ? "zh" : "en")}
             aria-label="Switch language"
           >
             <Languages size={18} />
@@ -1893,8 +1907,8 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       avatarUrl: mePayload.profile.avatarUrl ?? ""
     });
 
-    if (mePayload.profile.locale === "zh" || mePayload.profile.locale === "en") {
-      setLanguage(mePayload.profile.locale);
+    if (!getUrlLanguage() && (mePayload.profile.locale === "zh" || mePayload.profile.locale === "en")) {
+      chooseLanguage(mePayload.profile.locale);
     }
 
     const groupsPayload = await apiFetch<{ groups: GroupSummary[] }>("/api/groups");
@@ -2152,21 +2166,25 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       return;
     }
 
-    const link = `${origin.replace(/\/$/, "")}/join/${dashboard.group.inviteCode}`;
-    await navigator.clipboard.writeText(link);
+    await navigator.clipboard.writeText(shareLink);
     setMessage(t.copied);
   }
 
   const selectedGroup = groups.find((group) => group.id === selectedGroupId) ?? null;
   const readyToCompete = Boolean(dashboard?.me.baseReady);
   const shareLink = dashboard
-    ? `${origin.replace(/\/$/, "")}/join/${dashboard.group.inviteCode}`
+    ? withLanguageParam(`${origin.replace(/\/$/, "")}/join/${dashboard.group.inviteCode}`, language)
     : "";
 
   const topMember = dashboard?.members.find((member) => member.rank === 1) ?? null;
   const labelForBadge = (badge: string) =>
     badge in t ? t[badge as keyof typeof t] : badge.replace(/^badge/, "");
-  const toggleLanguage = () => setLanguage(language === "en" ? "zh" : "en");
+  function chooseLanguage(nextLanguage: Language) {
+    setLanguage(nextLanguage);
+    setUrlLanguage(nextLanguage);
+  }
+
+  const toggleLanguage = () => chooseLanguage(language === "en" ? "zh" : "en");
   const languageButtonLabel = language === "en" ? "中文" : "EN";
 
   if (!hasSupabaseConfig) {

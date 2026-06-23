@@ -227,9 +227,23 @@ export const copy = {
   }
 } satisfies Record<Language, Record<string, string>>;
 
+export function getUrlLanguage(): Language | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const language = new URLSearchParams(window.location.search).get("lang");
+  return language === "zh" || language === "en" ? language : null;
+}
+
 export function getInitialLanguage(): Language {
   if (typeof window === "undefined") {
     return "en";
+  }
+
+  const urlLanguage = getUrlLanguage();
+  if (urlLanguage) {
+    return urlLanguage;
   }
 
   const saved = window.localStorage.getItem("slim-yet-language");
@@ -238,4 +252,22 @@ export function getInitialLanguage(): Language {
   }
 
   return navigator.language.toLowerCase().startsWith("zh") ? "zh" : "en";
+}
+
+export function setUrlLanguage(language: Language) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("lang", language);
+  window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+}
+
+export function withLanguageParam(urlValue: string, language: Language) {
+  const fallbackOrigin = "https://shou-le-me.vercel.app";
+  const base = typeof window === "undefined" ? fallbackOrigin : window.location.origin;
+  const url = new URL(urlValue, base);
+  url.searchParams.set("lang", language);
+  return url.toString();
 }
