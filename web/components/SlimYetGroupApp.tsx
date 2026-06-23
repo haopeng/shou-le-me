@@ -552,6 +552,1230 @@ function Avatar({ name, url }: { name: string; url: string | null }) {
   return <div className="avatar fallback-avatar">{initials(name) || "SY"}</div>;
 }
 
+type LocalLog = {
+  id: string;
+  recordedOn: string;
+  weightKg: number;
+  note: string | null;
+};
+
+type LocalMember = {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  role: "owner" | "member";
+  baseWeightKg: number | null;
+  baseDate: string | null;
+  logs: LocalLog[];
+  isMe?: boolean;
+};
+
+type LocalGroup = {
+  id: string;
+  name: string;
+  description: string | null;
+  inviteCode: string;
+  ownerId: string;
+  createdAt: string;
+  members: LocalMember[];
+  feed: FeedItem[];
+};
+
+type LocalPreviewState = {
+  nickname: string;
+  avatarUrl: string | null;
+  selectedGroupId: string;
+  ownLogs: LocalLog[];
+  groups: LocalGroup[];
+};
+
+const localMeId = "local-me";
+const localStoreKey = "slim-yet-local-preview";
+
+function localId(prefix: string) {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return `${prefix}-${crypto.randomUUID()}`;
+  }
+  return `${prefix}-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function roundOne(value: number) {
+  return Math.round(value * 10) / 10;
+}
+
+function sampleLocalState(language: Language): LocalPreviewState {
+  const t = copy[language];
+  const groupId = "local-launch";
+  const ownLogs: LocalLog[] = [
+    { id: "me-1", recordedOn: "2026-06-16", weightKg: 82.4, note: null },
+    { id: "me-2", recordedOn: "2026-06-19", weightKg: 81.8, note: null },
+    { id: "me-3", recordedOn: "2026-06-22", weightKg: 81.2, note: "Felt good" }
+  ];
+  const amyLogs: LocalLog[] = [
+    { id: "amy-1", recordedOn: "2026-06-15", weightKg: 69.8, note: null },
+    { id: "amy-2", recordedOn: "2026-06-18", weightKg: 69.6, note: null },
+    { id: "amy-3", recordedOn: "2026-06-22", weightKg: 69.0, note: null }
+  ];
+  const jayLogs: LocalLog[] = [
+    { id: "jay-1", recordedOn: "2026-06-15", weightKg: 91.2, note: null },
+    { id: "jay-2", recordedOn: "2026-06-19", weightKg: 90.9, note: null },
+    { id: "jay-3", recordedOn: "2026-06-22", weightKg: 91.0, note: null }
+  ];
+
+  return {
+    nickname: language === "zh" ? "我" : "Me",
+    avatarUrl: null,
+    selectedGroupId: groupId,
+    ownLogs,
+    groups: [
+      {
+        id: groupId,
+        name: t.sampleGroupName,
+        description: t.sampleGroupDescription,
+        inviteCode: "LOCAL24",
+        ownerId: localMeId,
+        createdAt: "2026-06-15T08:00:00.000Z",
+        members: [
+          {
+            userId: localMeId,
+            displayName: language === "zh" ? "我" : "Me",
+            avatarUrl: null,
+            role: "owner",
+            baseWeightKg: 82.4,
+            baseDate: "2026-06-16",
+            logs: ownLogs,
+            isMe: true
+          },
+          {
+            userId: "local-amy",
+            displayName: "Amy",
+            avatarUrl: null,
+            role: "member",
+            baseWeightKg: 69.8,
+            baseDate: "2026-06-15",
+            logs: amyLogs
+          },
+          {
+            userId: "local-jay",
+            displayName: "Jay",
+            avatarUrl: null,
+            role: "member",
+            baseWeightKg: 91.2,
+            baseDate: "2026-06-15",
+            logs: jayLogs
+          }
+        ],
+        feed: [
+          {
+            id: "feed-1",
+            actorUserId: "local-amy",
+            actorMemberId: "local-amy",
+            actorName: "Amy",
+            actorAvatarUrl: null,
+            kind: "delta_update",
+            recordedOn: "2026-06-22",
+            previousDeltaKg: -0.2,
+            newDeltaKg: -0.8,
+            createdAt: "2026-06-22T19:20:00.000Z",
+            reactionCounts: { like: 2, heart: 1, care: 0, thumbs_down: 0 },
+            myReaction: "heart"
+          },
+          {
+            id: "feed-2",
+            actorUserId: localMeId,
+            actorMemberId: localMeId,
+            actorName: language === "zh" ? "我" : "Me",
+            actorAvatarUrl: null,
+            kind: "delta_update",
+            recordedOn: "2026-06-22",
+            previousDeltaKg: -0.6,
+            newDeltaKg: -1.2,
+            createdAt: "2026-06-22T07:45:00.000Z",
+            reactionCounts: { like: 1, heart: 1, care: 1, thumbs_down: 0 },
+            myReaction: null
+          }
+        ]
+      }
+    ]
+  };
+}
+
+function localHighlights(
+  logs: LocalLog[],
+  sparkline: Array<{ date: string; deltaKg: number }>,
+  deltaKg: number | null,
+  previousDeltaKg: number | null
+): GroupDashboard["members"][number]["highlights"] {
+  if (deltaKg === null) {
+    return [
+      {
+        kind: "base_needed",
+        valueKg: null,
+        auxKg: null,
+        date: null,
+        count: null,
+        tone: "warm"
+      }
+    ];
+  }
+
+  const highlights: GroupDashboard["members"][number]["highlights"] = [
+    {
+      kind: "current_delta",
+      valueKg: deltaKg,
+      auxKg: null,
+      date: sparkline.at(-1)?.date ?? null,
+      count: null,
+      tone: deltaKg <= 0 ? "good" : "warm"
+    }
+  ];
+
+  if (previousDeltaKg !== null) {
+    const move = roundOne(deltaKg - previousDeltaKg);
+    highlights.push({
+      kind: "latest_move",
+      valueKg: move,
+      auxKg: previousDeltaKg,
+      date: sparkline.at(-1)?.date ?? null,
+      count: null,
+      tone: move < 0 ? "good" : move === 0 ? "steady" : "warm"
+    });
+  }
+
+  if (sparkline.length >= 2) {
+    const best = sparkline.reduce((winner, point) =>
+      point.deltaKg < winner.deltaKg ? point : winner
+    );
+    highlights.push({
+      kind: "best_point",
+      valueKg: best.deltaKg,
+      auxKg: null,
+      date: best.date,
+      count: null,
+      tone: "good"
+    });
+  }
+
+  if (logs.length >= 3) {
+    highlights.push({
+      kind: "consistency",
+      valueKg: null,
+      auxKg: null,
+      date: null,
+      count: logs.length,
+      tone: "steady"
+    });
+  }
+
+  return highlights.slice(0, 4);
+}
+
+function buildLocalDashboard(state: LocalPreviewState, language: Language): GroupDashboard {
+  const group = state.groups.find((item) => item.id === state.selectedGroupId) ?? state.groups[0];
+  const normalizedMembers = group.members.map((member) =>
+    member.userId === localMeId
+      ? {
+          ...member,
+          displayName: state.nickname || copy[language].you,
+          avatarUrl: state.avatarUrl,
+          logs: state.ownLogs,
+          isMe: true
+        }
+      : member
+  );
+  const computed = normalizedMembers.map((member) => {
+    const logs = member.logs
+      .slice()
+      .sort((left, right) => left.recordedOn.localeCompare(right.recordedOn));
+    const latest = logs.at(-1) ?? null;
+    const previous = logs.length >= 2 ? logs.at(-2) : null;
+    const baseWeight = member.baseWeightKg;
+    const deltaKg = baseWeight !== null && latest ? roundOne(latest.weightKg - baseWeight) : null;
+    const previousDeltaKg =
+      baseWeight !== null && previous ? roundOne(previous.weightKg - baseWeight) : null;
+    const sparkline =
+      baseWeight === null
+        ? []
+        : logs.map((log) => ({
+            date: log.recordedOn,
+            deltaKg: roundOne(log.weightKg - baseWeight)
+          }));
+
+    return { member, logs, latest, deltaKg, previousDeltaKg, sparkline };
+  });
+  const ranked = computed
+    .filter((entry) => entry.deltaKg !== null)
+    .sort((left, right) => left.deltaKg! - right.deltaKg!);
+  const rankByUser = new Map<string, number>();
+  ranked.forEach((entry, index) => rankByUser.set(entry.member.userId, index + 1));
+  const today = todayIso();
+  const members = computed
+    .map((entry) => ({
+      memberId: entry.member.userId,
+      userId: entry.member.userId,
+      displayName: entry.member.displayName,
+      avatarUrl: entry.member.avatarUrl,
+      role: entry.member.role,
+      joinedAt: group.createdAt,
+      baseDate: entry.member.baseDate,
+      latestDate: entry.latest?.recordedOn ?? null,
+      deltaKg: entry.deltaKg,
+      previousDeltaKg: entry.previousDeltaKg,
+      daysLogged: entry.logs.length,
+      rank: rankByUser.get(entry.member.userId) ?? null,
+      badges: entry.deltaKg === null ? [] : entry.deltaKg <= 0 ? ["badgeBelowStart"] : [],
+      highlights: localHighlights(entry.logs, entry.sparkline, entry.deltaKg, entry.previousDeltaKg),
+      sparkline: entry.sparkline,
+      isMe: entry.member.userId === localMeId
+    }))
+    .sort((left, right) => (left.rank ?? 99) - (right.rank ?? 99));
+  const deltas = members
+    .map((member) => member.deltaKg)
+    .filter((delta): delta is number => delta !== null);
+  const me = normalizedMembers.find((member) => member.userId === localMeId)!;
+
+  return {
+    group: {
+      id: group.id,
+      name: group.name,
+      description: group.description,
+      inviteCode: group.inviteCode,
+      ownerId: group.ownerId,
+      createdAt: group.createdAt
+    },
+    me: {
+      memberId: localMeId,
+      role: "owner",
+      baseReady: me.baseWeightKg !== null,
+      baseDate: me.baseDate
+    },
+    stats: {
+      memberCount: members.length,
+      readyCount: members.filter((member) => member.baseDate).length,
+      loggedTodayCount: members.filter((member) => member.latestDate === today).length,
+      totalLossKg: roundOne(deltas.reduce((sum, delta) => sum + Math.max(0, -delta), 0)),
+      bestDeltaKg: deltas.length ? roundOne(Math.min(...deltas)) : null
+    },
+    members,
+    ownLogs: state.ownLogs
+      .slice()
+      .sort((left, right) => left.recordedOn.localeCompare(right.recordedOn))
+      .map((log) => ({
+        id: log.id,
+        recordedOn: log.recordedOn,
+        weightKg: log.weightKg,
+        note: log.note,
+        deltaKg: me.baseWeightKg !== null ? roundOne(log.weightKg - me.baseWeightKg) : null
+      })),
+    feed: group.feed.map((item) =>
+      item.actorUserId === localMeId
+        ? {
+            ...item,
+            actorName: state.nickname || copy[language].you,
+            actorAvatarUrl: state.avatarUrl
+          }
+        : item
+    )
+  };
+}
+
+function localReactionCounts(): Record<ReactionType, number> {
+  return { like: 0, heart: 0, care: 0, thumbs_down: 0 };
+}
+
+function sortedLogs(logs: LocalLog[]) {
+  return logs.slice().sort((left, right) => left.recordedOn.localeCompare(right.recordedOn));
+}
+
+function upsertLocalLog(logs: LocalLog[], nextLog: Omit<LocalLog, "id">) {
+  const existing = logs.find((log) => log.recordedOn === nextLog.recordedOn);
+  const merged = existing
+    ? logs.map((log) => (log.recordedOn === nextLog.recordedOn ? { ...log, ...nextLog } : log))
+    : [...logs, { id: localId("log"), ...nextLog }];
+
+  return sortedLogs(merged);
+}
+
+function syncLocalMe(groups: LocalGroup[], ownLogs: LocalLog[], nickname: string, avatarUrl: string | null) {
+  return groups.map((group) => ({
+    ...group,
+    members: group.members.map((member) =>
+      member.userId === localMeId
+        ? {
+            ...member,
+            displayName: nickname,
+            avatarUrl,
+            logs: ownLogs,
+            isMe: true
+          }
+        : member
+    )
+  }));
+}
+
+function latestDeltaForGroup(group: LocalGroup, logs: LocalLog[]) {
+  const me = group.members.find((member) => member.userId === localMeId);
+  const latest = sortedLogs(logs).at(-1);
+
+  if (!me?.baseWeightKg || !latest) {
+    return null;
+  }
+
+  return roundOne(latest.weightKg - me.baseWeightKg);
+}
+
+function localInviteCode() {
+  return Math.random().toString(36).slice(2, 8).toUpperCase();
+}
+
+function localSampleBuddies(language: Language) {
+  return sampleLocalState(language).groups[0].members
+    .filter((member) => member.userId !== localMeId)
+    .map((member) => ({
+      ...member,
+      userId: localId("buddy"),
+      logs: member.logs.map((log) => ({ ...log, id: localId("log") })),
+      isMe: false
+    }));
+}
+
+function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
+  const [language, setLanguage] = useState<Language>("en");
+  const [unit, setUnit] = useState<WeightUnit>("kg");
+  const [state, setState] = useState<LocalPreviewState>(() => sampleLocalState("en"));
+  const [hydrated, setHydrated] = useState(false);
+  const [profileForm, setProfileForm] = useState({ nickname: "", avatarUrl: "" });
+  const [groupForm, setGroupForm] = useState({ name: "", description: "" });
+  const [joinCode, setJoinCode] = useState(inviteCode ?? "");
+  const [baseForm, setBaseForm] = useState({ weight: "", date: todayIso() });
+  const [logForm, setLogForm] = useState({ weight: "", date: todayIso(), note: "" });
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [origin, setOrigin] = useState("https://shou-le-me.vercel.app");
+  const [handledInvite, setHandledInvite] = useState<string | null>(null);
+  const t = copy[language];
+  const dashboard = useMemo(() => buildLocalDashboard(state, language), [state, language]);
+  const selectedGroup =
+    state.groups.find((group) => group.id === state.selectedGroupId) ?? state.groups[0];
+  const topMember = dashboard.members.find((member) => member.rank === 1) ?? null;
+  const shareLink = `${origin.replace(/\/$/, "")}/join/${dashboard.group.inviteCode}`;
+  const readyToCompete = dashboard.me.baseReady;
+  const languageButtonLabel = language === "en" ? "中文" : "EN";
+  const labelForBadge = (badge: string) =>
+    badge in t ? t[badge as keyof typeof t] : badge.replace(/^badge/, "");
+
+  useEffect(() => {
+    const initialLanguage = getInitialLanguage();
+    const savedUnit = window.localStorage.getItem("slim-yet-unit");
+    const savedState = window.localStorage.getItem(localStoreKey);
+    setLanguage(initialLanguage);
+    setUnit(savedUnit === "lb" ? "lb" : "kg");
+    setOrigin(process.env.NEXT_PUBLIC_APP_URL || window.location.origin);
+
+    if (savedState) {
+      try {
+        const parsed = JSON.parse(savedState) as LocalPreviewState;
+        if (parsed?.groups?.length && parsed?.ownLogs) {
+          setState({
+            ...parsed,
+            avatarUrl: parsed.avatarUrl ?? null
+          });
+          setProfileForm({
+            nickname: parsed.nickname ?? "",
+            avatarUrl: parsed.avatarUrl ?? ""
+          });
+          setHydrated(true);
+          return;
+        }
+      } catch {
+        window.localStorage.removeItem(localStoreKey);
+      }
+    }
+
+    const sampleState = sampleLocalState(initialLanguage);
+    setState(sampleState);
+    setProfileForm({
+      nickname: sampleState.nickname,
+      avatarUrl: sampleState.avatarUrl ?? ""
+    });
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.lang = language === "zh" ? "zh-Hans" : "en";
+    document.title = copy[language].appName;
+    window.localStorage.setItem("slim-yet-language", language);
+  }, [language]);
+
+  useEffect(() => {
+    window.localStorage.setItem("slim-yet-unit", unit);
+  }, [unit]);
+
+  useEffect(() => {
+    if (!hydrated) {
+      return;
+    }
+
+    window.localStorage.setItem(localStoreKey, JSON.stringify(state));
+  }, [hydrated, state]);
+
+  useEffect(() => {
+    if (!inviteCode || !hydrated || handledInvite === inviteCode) {
+      return;
+    }
+
+    const normalizedCode = inviteCode.toUpperCase();
+    const existing = state.groups.find((group) => group.inviteCode === normalizedCode);
+    if (existing) {
+      setState((current) => ({ ...current, selectedGroupId: existing.id }));
+      setHandledInvite(inviteCode);
+      return;
+    }
+
+    setState((current) => {
+      const groupId = localId("group");
+      const nextGroup: LocalGroup = {
+        id: groupId,
+        name: language === "zh" ? "邀请小组" : "Invite Group",
+        description: language === "zh" ? "从分享链接加入的本地预览小组" : "Local preview group from a shared link",
+        inviteCode: normalizedCode,
+        ownerId: "local-host",
+        createdAt: new Date().toISOString(),
+        members: [
+          {
+            userId: localMeId,
+            displayName: current.nickname,
+            avatarUrl: current.avatarUrl,
+            role: "member",
+            baseWeightKg: null,
+            baseDate: null,
+            logs: current.ownLogs,
+            isMe: true
+          },
+          ...localSampleBuddies(language)
+        ],
+        feed: []
+      };
+      return {
+        ...current,
+        selectedGroupId: groupId,
+        groups: [...current.groups, nextGroup]
+      };
+    });
+    setHandledInvite(inviteCode);
+  }, [handledInvite, hydrated, inviteCode, language, state.groups]);
+
+  function showMessage(nextMessage: string) {
+    setError(null);
+    setMessage(nextMessage);
+  }
+
+  function handleSaveProfile(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setState((current) => {
+      const nickname = profileForm.nickname.trim() || copy[language].you;
+      const avatarUrl = profileForm.avatarUrl.trim() || null;
+      return {
+        ...current,
+        nickname,
+        avatarUrl,
+        groups: syncLocalMe(current.groups, current.ownLogs, nickname, avatarUrl)
+      };
+    });
+    showMessage(language === "zh" ? "资料已保存。" : "Profile saved.");
+  }
+
+  function handleCreateGroup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const name = groupForm.name.trim();
+
+    if (!name) {
+      setError(t.errorFallback);
+      return;
+    }
+
+    setState((current) => {
+      const groupId = localId("group");
+      const nextGroup: LocalGroup = {
+        id: groupId,
+        name,
+        description: groupForm.description.trim() || null,
+        inviteCode: localInviteCode(),
+        ownerId: localMeId,
+        createdAt: new Date().toISOString(),
+        members: [
+          {
+            userId: localMeId,
+            displayName: current.nickname,
+            avatarUrl: current.avatarUrl,
+            role: "owner",
+            baseWeightKg: null,
+            baseDate: null,
+            logs: current.ownLogs,
+            isMe: true
+          },
+          ...localSampleBuddies(language)
+        ],
+        feed: []
+      };
+
+      return {
+        ...current,
+        selectedGroupId: groupId,
+        groups: [...current.groups, nextGroup]
+      };
+    });
+    setGroupForm({ name: "", description: "" });
+    showMessage(language === "zh" ? "小组已创建。" : "Group created.");
+  }
+
+  function handleJoinGroup(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const normalizedCode = joinCode.trim().toUpperCase();
+
+    if (!normalizedCode) {
+      setError(t.errorFallback);
+      return;
+    }
+
+    setState((current) => {
+      const existing = current.groups.find((group) => group.inviteCode === normalizedCode);
+      if (existing) {
+        return { ...current, selectedGroupId: existing.id };
+      }
+
+      const groupId = localId("group");
+      const nextGroup: LocalGroup = {
+        id: groupId,
+        name: language === "zh" ? `小组 ${normalizedCode}` : `Group ${normalizedCode}`,
+        description: language === "zh" ? "本地预览加入的小组" : "Joined in local preview",
+        inviteCode: normalizedCode,
+        ownerId: "local-host",
+        createdAt: new Date().toISOString(),
+        members: [
+          {
+            userId: localMeId,
+            displayName: current.nickname,
+            avatarUrl: current.avatarUrl,
+            role: "member",
+            baseWeightKg: null,
+            baseDate: null,
+            logs: current.ownLogs,
+            isMe: true
+          },
+          ...localSampleBuddies(language)
+        ],
+        feed: []
+      };
+
+      return {
+        ...current,
+        selectedGroupId: groupId,
+        groups: [...current.groups, nextGroup]
+      };
+    });
+    showMessage(language === "zh" ? "已加入本地预览小组。" : "Joined a local preview group.");
+  }
+
+  function handleBase(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const baseWeightKg = fromDisplayWeight(baseForm.weight, unit);
+
+    if (baseWeightKg === null) {
+      setError(t.errorFallback);
+      return;
+    }
+
+    setState((current) => {
+      const nextOwnLogs = upsertLocalLog(current.ownLogs, {
+        recordedOn: baseForm.date,
+        weightKg: baseWeightKg,
+        note: null
+      });
+      const groupsWithLogs = syncLocalMe(
+        current.groups,
+        nextOwnLogs,
+        current.nickname,
+        current.avatarUrl
+      );
+      const nextGroups = groupsWithLogs.map((group) => {
+        if (group.id !== current.selectedGroupId) {
+          return group;
+        }
+
+        const baseFeedItem: FeedItem = {
+          id: localId("feed"),
+          actorUserId: localMeId,
+          actorMemberId: localMeId,
+          actorName: current.nickname,
+          actorAvatarUrl: current.avatarUrl,
+          kind: "base_set",
+          recordedOn: baseForm.date,
+          previousDeltaKg: null,
+          newDeltaKg: 0,
+          createdAt: new Date().toISOString(),
+          reactionCounts: localReactionCounts(),
+          myReaction: null
+        };
+
+        return {
+          ...group,
+          members: group.members.map((member) =>
+            member.userId === localMeId
+              ? {
+                  ...member,
+                  baseWeightKg,
+                  baseDate: baseForm.date,
+                  logs: nextOwnLogs
+                }
+              : member
+          ),
+          feed: [baseFeedItem, ...group.feed]
+        };
+      });
+
+      return {
+        ...current,
+        ownLogs: nextOwnLogs,
+        groups: nextGroups
+      };
+    });
+    showMessage(language === "zh" ? "私密基准已设置。" : "Private base set.");
+  }
+
+  function handleLog(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const weightKg = fromDisplayWeight(logForm.weight, unit);
+
+    if (weightKg === null) {
+      setError(t.errorFallback);
+      return;
+    }
+
+    setState((current) => {
+      const nextOwnLogs = upsertLocalLog(current.ownLogs, {
+        recordedOn: logForm.date,
+        weightKg,
+        note: logForm.note.trim() || null
+      });
+      const groupsWithLogs = syncLocalMe(
+        current.groups,
+        nextOwnLogs,
+        current.nickname,
+        current.avatarUrl
+      );
+      const nextGroups = groupsWithLogs.map((group) => {
+        const previousDeltaKg = latestDeltaForGroup(group, current.ownLogs);
+        const newDeltaKg = latestDeltaForGroup(group, nextOwnLogs);
+        const shouldPostFeed =
+          newDeltaKg !== null && (previousDeltaKg === null || previousDeltaKg !== newDeltaKg);
+
+        if (!shouldPostFeed) {
+          return group;
+        }
+
+        const kind: FeedItem["kind"] = previousDeltaKg === null ? "first_delta" : "delta_update";
+        const feedItem: FeedItem = {
+          id: localId("feed"),
+          actorUserId: localMeId,
+          actorMemberId: localMeId,
+          actorName: current.nickname,
+          actorAvatarUrl: current.avatarUrl,
+          kind,
+          recordedOn: logForm.date,
+          previousDeltaKg,
+          newDeltaKg,
+          createdAt: new Date().toISOString(),
+          reactionCounts: localReactionCounts(),
+          myReaction: null
+        };
+
+        return {
+          ...group,
+          feed: [feedItem, ...group.feed]
+        };
+      });
+
+      return {
+        ...current,
+        ownLogs: nextOwnLogs,
+        groups: nextGroups
+      };
+    });
+    setLogForm((current) => ({ ...current, note: "" }));
+    showMessage(language === "zh" ? "体重已记录，小组变化已更新。" : "Weight logged. Group deltas updated.");
+  }
+
+  function handleDeleteLog(date: string) {
+    setState((current) => {
+      const nextOwnLogs = current.ownLogs.filter((log) => log.recordedOn !== date);
+      return {
+        ...current,
+        ownLogs: nextOwnLogs,
+        groups: syncLocalMe(current.groups, nextOwnLogs, current.nickname, current.avatarUrl)
+      };
+    });
+    showMessage(language === "zh" ? "记录已删除。" : "Log deleted.");
+  }
+
+  async function handleReaction(feedId: string, reaction: ReactionType) {
+    const busyKey = `react-${feedId}-${reaction}`;
+    setBusy(busyKey);
+    setState((current) => ({
+      ...current,
+      groups: current.groups.map((group) => {
+        if (group.id !== current.selectedGroupId) {
+          return group;
+        }
+
+        return {
+          ...group,
+          feed: group.feed.map((item) => {
+            if (item.id !== feedId) {
+              return item;
+            }
+
+            const reactionCounts = { ...item.reactionCounts };
+            if (item.myReaction) {
+              reactionCounts[item.myReaction] = Math.max(0, reactionCounts[item.myReaction] - 1);
+            }
+
+            const myReaction = item.myReaction === reaction ? null : reaction;
+            if (myReaction) {
+              reactionCounts[myReaction] += 1;
+            }
+
+            return { ...item, reactionCounts, myReaction };
+          })
+        };
+      })
+    }));
+    setBusy(null);
+  }
+
+  async function handleShare() {
+    await navigator.clipboard?.writeText(shareLink).catch(() => undefined);
+    showMessage(t.copied);
+  }
+
+  return (
+    <main className="app-shell">
+      <header className="app-header">
+        <div className="brand-row compact">
+          <Image src="/brand/spark-coin.png" alt="" width={58} height={58} priority />
+          <div>
+            <h1>{t.appName}</h1>
+          </div>
+          <div className="setup-pill local-pill">
+            <ShieldCheck size={16} />
+            <span>{t.previewMode}</span>
+          </div>
+        </div>
+        <div className="header-actions">
+          <div className="segmented-control" aria-label={t.unit}>
+            <button
+              type="button"
+              className={unit === "kg" ? "active" : ""}
+              onClick={() => setUnit("kg")}
+            >
+              {t.kg}
+            </button>
+            <button
+              type="button"
+              className={unit === "lb" ? "active" : ""}
+              onClick={() => setUnit("lb")}
+            >
+              {t.lb}
+            </button>
+          </div>
+          <button
+            className="icon-button language-button"
+            type="button"
+            onClick={() => setLanguage(language === "en" ? "zh" : "en")}
+            aria-label="Switch language"
+          >
+            <Languages size={18} />
+            <span>{languageButtonLabel}</span>
+          </button>
+        </div>
+      </header>
+
+      <div className="toast preview-toast">
+        <ShieldCheck size={16} />
+        <span>
+          {t.previewNote} · {t.localOnly}
+        </span>
+      </div>
+
+      {(message || error) && (
+        <div className={error ? "toast error" : "toast"}>{error ?? message}</div>
+      )}
+
+      <div className="app-grid">
+        <aside className="side-rail">
+          <section className="panel profile-panel">
+            <div className="panel-title">
+              <UserRound size={18} />
+              <span>{t.profile}</span>
+            </div>
+            <form className="compact-form" onSubmit={handleSaveProfile}>
+              <label>
+                <span>{t.nickname}</span>
+                <input
+                  value={profileForm.nickname}
+                  onChange={(event) =>
+                    setProfileForm((current) => ({ ...current, nickname: event.target.value }))
+                  }
+                />
+              </label>
+              <label>
+                <span>{t.avatarUrl}</span>
+                <div className="input-wrap slim">
+                  <ImageIcon size={16} />
+                  <input
+                    value={profileForm.avatarUrl}
+                    onChange={(event) =>
+                      setProfileForm((current) => ({ ...current, avatarUrl: event.target.value }))
+                    }
+                  />
+                </div>
+              </label>
+              <button className="secondary-button full" type="submit">
+                {t.saveProfile}
+              </button>
+            </form>
+          </section>
+
+          <section className="panel">
+            <div className="panel-title">
+              <Plus size={18} />
+              <span>{t.createGroup}</span>
+            </div>
+            <form className="compact-form" onSubmit={handleCreateGroup}>
+              <label>
+                <span>{t.groupName}</span>
+                <input
+                  value={groupForm.name}
+                  onChange={(event) =>
+                    setGroupForm((current) => ({ ...current, name: event.target.value }))
+                  }
+                  required
+                />
+              </label>
+              <label>
+                <span>{t.description}</span>
+                <textarea
+                  value={groupForm.description}
+                  onChange={(event) =>
+                    setGroupForm((current) => ({ ...current, description: event.target.value }))
+                  }
+                />
+              </label>
+              <button className="primary-button full" type="submit">
+                {t.create}
+              </button>
+            </form>
+          </section>
+
+          <section className="panel">
+            <div className="panel-title">
+              <LinkIcon size={18} />
+              <span>{t.joinGroup}</span>
+            </div>
+            <form className="compact-form" onSubmit={handleJoinGroup}>
+              <label>
+                <span>{t.inviteCode}</span>
+                <input
+                  value={joinCode}
+                  onChange={(event) => setJoinCode(event.target.value)}
+                  required
+                />
+              </label>
+              <button className="secondary-button full" type="submit">
+                {t.join}
+              </button>
+            </form>
+          </section>
+        </aside>
+
+        <section className="workspace">
+          <nav className="group-tabs" aria-label={t.groups}>
+            {state.groups.map((group) => (
+              <button
+                type="button"
+                className={group.id === state.selectedGroupId ? "active" : ""}
+                key={group.id}
+                onClick={() => setState((current) => ({ ...current, selectedGroupId: group.id }))}
+              >
+                <span>{group.name}</span>
+                <small>
+                  {group.members.length} {t.members}
+                </small>
+              </button>
+            ))}
+          </nav>
+
+          <section className="group-hero">
+            <div>
+              <p className="eyebrow">{selectedGroup.description || t.leaderboard}</p>
+              <h2>{dashboard.group.name}</h2>
+              <div className="hero-meta">
+                <span>
+                  <Users size={16} />
+                  {dashboard.stats.memberCount} {t.members}
+                </span>
+                <span>
+                  <ShieldCheck size={16} />
+                  {t.privateBase}
+                </span>
+                {topMember && (
+                  <span>
+                    <Medal size={16} />
+                    {topMember.displayName}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="share-box">
+              <code>{shareLink}</code>
+              <button className="icon-button hot" type="button" onClick={handleShare}>
+                <Clipboard size={18} />
+              </button>
+            </div>
+          </section>
+
+          <section className="score-strip">
+            <div className="score-card hot">
+              <Flame size={19} />
+              <span>{t.totalLoss}</span>
+              <strong>
+                {formatNumber(toDisplayWeight(dashboard.stats.totalLossKg, unit))} {t[unit]}
+              </strong>
+            </div>
+            <div className="score-card">
+              <Users size={19} />
+              <span>{t.ready}</span>
+              <strong>
+                {dashboard.stats.readyCount}/{dashboard.stats.memberCount}
+              </strong>
+            </div>
+            <div className="score-card">
+              <CalendarDays size={19} />
+              <span>{t.today}</span>
+              <strong>{dashboard.stats.loggedTodayCount}</strong>
+            </div>
+            <div className="score-card cool">
+              <Gauge size={19} />
+              <span>{t.bestDrop}</span>
+              <strong>
+                {dashboard.stats.bestDeltaKg === null
+                  ? "--"
+                  : `${formatNumber(toDisplayWeight(dashboard.stats.bestDeltaKg, unit))} ${
+                      t[unit]
+                    }`}
+              </strong>
+            </div>
+          </section>
+
+          <MemberTrendBoard dashboard={dashboard} unit={unit} language={language} />
+
+          <section className="action-row">
+            <form className="action-panel" onSubmit={handleBase}>
+              <div className="panel-title">
+                <ShieldCheck size={18} />
+                <span>{t.setBase}</span>
+              </div>
+              <div className="inline-fields">
+                <label>
+                  <span>{t.baseWeight}</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.1"
+                    min="40"
+                    value={baseForm.weight}
+                    onChange={(event) =>
+                      setBaseForm((current) => ({ ...current, weight: event.target.value }))
+                    }
+                    required
+                  />
+                </label>
+                <label>
+                  <span>{t.baseDate}</span>
+                  <input
+                    type="date"
+                    value={baseForm.date}
+                    onChange={(event) =>
+                      setBaseForm((current) => ({ ...current, date: event.target.value }))
+                    }
+                    required
+                  />
+                </label>
+                <button className="primary-button" type="submit">
+                  {t.setBase}
+                </button>
+              </div>
+            </form>
+
+            <form className="action-panel" onSubmit={handleLog}>
+              <div className="panel-title">
+                <Weight size={18} />
+                <span>{t.logWeight}</span>
+              </div>
+              <div className="inline-fields">
+                <label>
+                  <span>{t.weight}</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.1"
+                    min="40"
+                    value={logForm.weight}
+                    onChange={(event) =>
+                      setLogForm((current) => ({ ...current, weight: event.target.value }))
+                    }
+                    required
+                  />
+                </label>
+                <label>
+                  <span>{t.today}</span>
+                  <input
+                    type="date"
+                    value={logForm.date}
+                    onChange={(event) =>
+                      setLogForm((current) => ({ ...current, date: event.target.value }))
+                    }
+                    required
+                  />
+                </label>
+                <label>
+                  <span>{t.note}</span>
+                  <input
+                    value={logForm.note}
+                    onChange={(event) =>
+                      setLogForm((current) => ({ ...current, note: event.target.value }))
+                    }
+                  />
+                </label>
+                <button className="primary-button aqua" type="submit">
+                  {t.saveLog}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          {!readyToCompete && <div className="nudge-bar">{t.noBase}</div>}
+
+          <div className="dashboard-grid">
+            <section className="panel leaderboard-panel">
+              <div className="panel-title">
+                <Trophy size={18} />
+                <span>{t.leaderboard}</span>
+              </div>
+              <div className="leaderboard">
+                {dashboard.members.map((member) => {
+                  const displayDelta =
+                    member.deltaKg === null ? null : toDisplayWeight(member.deltaKg, unit);
+                  const winner = member.rank === 1;
+                  return (
+                    <article
+                      className={classNames("leader-row", winner && "winner", member.isMe && "me")}
+                      key={member.memberId}
+                    >
+                      <div className="rank-cell">{member.rank ?? "-"}</div>
+                      <Avatar name={member.displayName} url={member.avatarUrl} />
+                      <div className="leader-main">
+                        <div className="leader-name">
+                          <strong>{member.displayName}</strong>
+                          {member.isMe && <span>{t.you}</span>}
+                          {member.role === "owner" && <span>{t.owner}</span>}
+                        </div>
+                        <div className="badge-row">
+                          {member.badges.length ? (
+                            member.badges.map((badge) => (
+                              <small key={badge}>{labelForBadge(badge)}</small>
+                            ))
+                          ) : member.baseDate ? (
+                            <small>{t.privateBase}</small>
+                          ) : (
+                            <small>{t.noBase}</small>
+                          )}
+                        </div>
+                      </div>
+                      <DeltaSparkline points={member.sparkline} winner={winner} />
+                      <div className="delta-cell">
+                        <strong
+                          className={displayDelta !== null && displayDelta <= 0 ? "good" : "warm"}
+                        >
+                          {displayDelta === null
+                            ? "--"
+                            : `${formatNumber(displayDelta)} ${t[unit]}`}
+                        </strong>
+                        <span>{member.latestDate ?? "--"}</span>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+
+            <div className="right-stack">
+              <FeedPanel
+                busy={busy}
+                dashboard={dashboard}
+                language={language}
+                onReact={handleReaction}
+                unit={unit}
+              />
+
+              <OwnWeightChart dashboard={dashboard} unit={unit} language={language} />
+
+              <section className="panel logs-panel">
+                <div className="panel-title">
+                  <Activity size={18} />
+                  <span>{t.myLogs}</span>
+                </div>
+                <div className="log-list">
+                  {dashboard.ownLogs.length ? (
+                    dashboard.ownLogs
+                      .slice()
+                      .reverse()
+                      .slice(0, 10)
+                      .map((log) => (
+                        <article className="log-row" key={log.id}>
+                          <span>{log.recordedOn}</span>
+                          <strong>
+                            {formatNumber(toDisplayWeight(log.weightKg, unit))} {t[unit]}
+                          </strong>
+                          <small>
+                            {log.deltaKg === null
+                              ? "--"
+                              : `${formatNumber(toDisplayWeight(log.deltaKg, unit))} ${t[unit]}`}
+                          </small>
+                          <button
+                            className="icon-button ghost"
+                            type="button"
+                            aria-label="Delete log"
+                            onClick={() => handleDeleteLog(log.recordedOn)}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </article>
+                      ))
+                  ) : (
+                    <div className="empty-state">{t.noLogs}</div>
+                  )}
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+      </div>
+    </main>
+  );
+}
+
 export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   const [language, setLanguage] = useState<Language>("en");
   const [unit, setUnit] = useState<WeightUnit>("kg");
@@ -946,49 +2170,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   const languageButtonLabel = language === "en" ? "中文" : "EN";
 
   if (!hasSupabaseConfig) {
-    return (
-      <main className="app-shell centered-shell">
-        <section className="config-panel">
-          <div className="config-actions">
-            <button
-              className="icon-button language-button"
-              type="button"
-              onClick={toggleLanguage}
-              aria-label="Switch language"
-            >
-              <Languages size={18} />
-              <span>{languageButtonLabel}</span>
-            </button>
-          </div>
-          <div className="config-brand">
-            <Image src="/brand/thermal-jewel.png" alt="" width={92} height={92} priority />
-            <div>
-              <h1>{t.appName}</h1>
-            </div>
-          </div>
-          <div className="setup-pill">
-            <ShieldCheck size={16} />
-            <span>{t.setupStatus}</span>
-          </div>
-          <h2>{t.configuredSoon}</h2>
-          <p>{t.envHelp}</p>
-          <div className="setup-points">
-            <span>
-              <Lock size={16} />
-              {t.setupPointPrivacy}
-            </span>
-            <span>
-              <LineChart size={16} />
-              {t.setupPointTrends}
-            </span>
-            <span>
-              <Heart size={16} />
-              {t.setupPointCheer}
-            </span>
-          </div>
-        </section>
-      </main>
-    );
+    return <LocalPreviewApp inviteCode={inviteCode} />;
   }
 
   if (booting) {
