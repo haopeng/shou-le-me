@@ -36,7 +36,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     return jsonError("Valid weight and date are required.", 422, "WEIGHT_REQUIRED");
   }
 
-  const { error } = await auth.admin.from("weight_logs").upsert(
+  const { error } = await auth.admin.from("slim_weight_logs").upsert(
     {
       member_id: membership.id,
       recorded_on: recordedOn,
@@ -74,7 +74,7 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
   }
 
   const { error } = await auth.admin
-    .from("weight_logs")
+    .from("slim_weight_logs")
     .delete()
     .eq("member_id", membership.id)
     .eq("recorded_on", recordedOn);

@@ -124,7 +124,7 @@ export async function getAuthContext(request: NextRequest): Promise<AuthContext 
 
   const admin = getAdminClient();
 
-  await admin.from("profiles").upsert(
+  await admin.from("slim_profiles").upsert(
     {
       id: data.user.id,
       email: data.user.email ?? null,
@@ -147,7 +147,7 @@ export async function requireMembership(
   userId: string
 ) {
   const { data, error } = await admin
-    .from("group_members")
+    .from("slim_group_members")
     .select("*")
     .eq("group_id", groupId)
     .eq("user_id", userId)

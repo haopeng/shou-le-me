@@ -14,9 +14,9 @@ export async function GET(request: NextRequest) {
   }
 
   const { data: memberships, error } = await context.admin
-    .from("group_members")
+    .from("slim_group_members")
     .select(
-      "group_id,role,base_date,base_weight_kg,groups(id,name,description,invite_code,owner_id,created_at)"
+      "group_id,role,base_date,base_weight_kg,slim_groups(id,name,description,invite_code,owner_id,created_at)"
     )
     .eq("user_id", context.user.id)
     .order("joined_at", { ascending: false });
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
 
   if (groupIds.length) {
     const { data: memberRows, error: countError } = await context.admin
-      .from("group_members")
+      .from("slim_group_members")
       .select("group_id")
       .in("group_id", groupIds);
 
@@ -45,7 +45,9 @@ export async function GET(request: NextRequest) {
 
   const groups = (memberships ?? [])
     .map((membership) => {
-      const group = Array.isArray(membership.groups) ? membership.groups[0] : membership.groups;
+      const group = Array.isArray(membership.slim_groups)
+        ? membership.slim_groups[0]
+        : membership.slim_groups;
       if (!group) {
         return null;
       }
@@ -86,7 +88,7 @@ export async function POST(request: NextRequest) {
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
     const { data, error } = await context.admin
-      .from("groups")
+      .from("slim_groups")
       .insert({
         name,
         description,
@@ -111,7 +113,7 @@ export async function POST(request: NextRequest) {
     return jsonError(lastError?.message ?? "Could not create group.", 500);
   }
 
-  const { error: memberError } = await context.admin.from("group_members").insert({
+  const { error: memberError } = await context.admin.from("slim_group_members").insert({
     group_id: group.id,
     user_id: context.user.id,
     role: "owner"

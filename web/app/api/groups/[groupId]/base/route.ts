@@ -36,7 +36,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   }
 
   const { error: updateError } = await auth.admin
-    .from("group_members")
+    .from("slim_group_members")
     .update({
       base_weight_kg: baseWeightKg,
       base_date: baseDate,
@@ -48,7 +48,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     return jsonError(updateError.message, 500);
   }
 
-  const { error: logError } = await auth.admin.from("weight_logs").upsert(
+  const { error: logError } = await auth.admin.from("slim_weight_logs").upsert(
     {
       member_id: membership.id,
       recorded_on: baseDate,

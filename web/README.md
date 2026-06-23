@@ -24,6 +24,8 @@ The browser uses Supabase Auth for login. All group and weight data flows throug
 4. Enable Email auth in Supabase Auth.
 5. Optional: enable Google auth in Supabase Auth Providers.
 
+The SQL uses `slim_*` table names, so it is safe to install into an existing Supabase project that already has another app's tables.
+
 ## Environment Variables
 
 Copy `.env.example` to `.env.local` for local development:

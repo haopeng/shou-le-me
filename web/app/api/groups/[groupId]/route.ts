@@ -113,7 +113,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   const { data: group, error: groupError } = await auth.admin
-    .from("groups")
+    .from("slim_groups")
     .select("*")
     .eq("id", groupId)
     .single();
@@ -123,7 +123,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   const { data: members, error: membersError } = await auth.admin
-    .from("group_members")
+    .from("slim_group_members")
     .select("*")
     .eq("group_id", groupId)
     .order("joined_at", { ascending: true });
@@ -140,7 +140,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   if (userIds.length) {
     const { data: profiles, error: profilesError } = await auth.admin
-      .from("profiles")
+      .from("slim_profiles")
       .select("id,email,full_name,nickname,avatar_url")
       .in("id", userIds);
 
@@ -157,7 +157,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   if (memberIds.length) {
     const { data: logs, error: logsError } = await auth.admin
-      .from("weight_logs")
+      .from("slim_weight_logs")
       .select("id,member_id,recorded_on,weight_kg,note,created_at")
       .in("member_id", memberIds)
       .order("recorded_on", { ascending: true });

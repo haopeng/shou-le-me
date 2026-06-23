@@ -10,7 +10,7 @@ begin
 end;
 $$;
 
-create table if not exists public.profiles (
+create table if not exists public.slim_profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
   full_name text,
@@ -21,9 +21,9 @@ create table if not exists public.profiles (
   updated_at timestamptz not null default now()
 );
 
-create table if not exists public.groups (
+create table if not exists public.slim_groups (
   id uuid primary key default gen_random_uuid(),
-  owner_id uuid not null references public.profiles(id) on delete cascade,
+  owner_id uuid not null references public.slim_profiles(id) on delete cascade,
   name text not null check (char_length(name) between 1 and 80),
   description text,
   invite_code text not null unique,
@@ -31,10 +31,10 @@ create table if not exists public.groups (
   updated_at timestamptz not null default now()
 );
 
-create table if not exists public.group_members (
+create table if not exists public.slim_group_members (
   id uuid primary key default gen_random_uuid(),
-  group_id uuid not null references public.groups(id) on delete cascade,
-  user_id uuid not null references public.profiles(id) on delete cascade,
+  group_id uuid not null references public.slim_groups(id) on delete cascade,
+  user_id uuid not null references public.slim_profiles(id) on delete cascade,
   role text not null default 'member' check (role in ('owner', 'member')),
   display_name text,
   base_weight_kg numeric(5, 1),
@@ -44,9 +44,9 @@ create table if not exists public.group_members (
   unique (group_id, user_id)
 );
 
-create table if not exists public.weight_logs (
+create table if not exists public.slim_weight_logs (
   id uuid primary key default gen_random_uuid(),
-  member_id uuid not null references public.group_members(id) on delete cascade,
+  member_id uuid not null references public.slim_group_members(id) on delete cascade,
   recorded_on date not null,
   weight_kg numeric(5, 1) not null check (weight_kg between 20 and 400),
   note text,
@@ -55,29 +55,29 @@ create table if not exists public.weight_logs (
   unique (member_id, recorded_on)
 );
 
-create index if not exists groups_invite_code_idx on public.groups(invite_code);
-create index if not exists group_members_user_id_idx on public.group_members(user_id);
-create index if not exists group_members_group_id_idx on public.group_members(group_id);
-create index if not exists weight_logs_member_date_idx on public.weight_logs(member_id, recorded_on);
+create index if not exists slim_groups_invite_code_idx on public.slim_groups(invite_code);
+create index if not exists slim_group_members_user_id_idx on public.slim_group_members(user_id);
+create index if not exists slim_group_members_group_id_idx on public.slim_group_members(group_id);
+create index if not exists slim_weight_logs_member_date_idx on public.slim_weight_logs(member_id, recorded_on);
 
-drop trigger if exists profiles_set_updated_at on public.profiles;
-create trigger profiles_set_updated_at
-before update on public.profiles
+drop trigger if exists slim_profiles_set_updated_at on public.slim_profiles;
+create trigger slim_profiles_set_updated_at
+before update on public.slim_profiles
 for each row execute function public.set_updated_at();
 
-drop trigger if exists groups_set_updated_at on public.groups;
-create trigger groups_set_updated_at
-before update on public.groups
+drop trigger if exists slim_groups_set_updated_at on public.slim_groups;
+create trigger slim_groups_set_updated_at
+before update on public.slim_groups
 for each row execute function public.set_updated_at();
 
-drop trigger if exists group_members_set_updated_at on public.group_members;
-create trigger group_members_set_updated_at
-before update on public.group_members
+drop trigger if exists slim_group_members_set_updated_at on public.slim_group_members;
+create trigger slim_group_members_set_updated_at
+before update on public.slim_group_members
 for each row execute function public.set_updated_at();
 
-drop trigger if exists weight_logs_set_updated_at on public.weight_logs;
-create trigger weight_logs_set_updated_at
-before update on public.weight_logs
+drop trigger if exists slim_weight_logs_set_updated_at on public.slim_weight_logs;
+create trigger slim_weight_logs_set_updated_at
+before update on public.slim_weight_logs
 for each row execute function public.set_updated_at();
 
 create or replace function public.handle_new_user()
@@ -87,7 +87,7 @@ security definer
 set search_path = public
 as $$
 begin
-  insert into public.profiles (id, email, full_name, avatar_url)
+  insert into public.slim_profiles (id, email, full_name, avatar_url)
   values (
     new.id,
     new.email,
@@ -105,29 +105,29 @@ create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_user();
 
-alter table public.profiles enable row level security;
-alter table public.groups enable row level security;
-alter table public.group_members enable row level security;
-alter table public.weight_logs enable row level security;
+alter table public.slim_profiles enable row level security;
+alter table public.slim_groups enable row level security;
+alter table public.slim_group_members enable row level security;
+alter table public.slim_weight_logs enable row level security;
 
-drop policy if exists "profiles_select_own" on public.profiles;
-create policy "profiles_select_own"
-on public.profiles
+drop policy if exists "slim_profiles_select_own" on public.slim_profiles;
+create policy "slim_profiles_select_own"
+on public.slim_profiles
 for select
 to authenticated
 using (auth.uid() = id);
 
-drop policy if exists "profiles_update_own" on public.profiles;
-create policy "profiles_update_own"
-on public.profiles
+drop policy if exists "slim_profiles_update_own" on public.slim_profiles;
+create policy "slim_profiles_update_own"
+on public.slim_profiles
 for update
 to authenticated
 using (auth.uid() = id)
 with check (auth.uid() = id);
 
-drop policy if exists "profiles_insert_own" on public.profiles;
-create policy "profiles_insert_own"
-on public.profiles
+drop policy if exists "slim_profiles_insert_own" on public.slim_profiles;
+create policy "slim_profiles_insert_own"
+on public.slim_profiles
 for insert
 to authenticated
 with check (auth.uid() = id);

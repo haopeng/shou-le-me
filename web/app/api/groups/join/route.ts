@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: group, error: groupError } = await context.admin
-    .from("groups")
+    .from("slim_groups")
     .select("*")
     .eq("invite_code", inviteCode)
     .maybeSingle();
@@ -29,14 +29,14 @@ export async function POST(request: NextRequest) {
   }
 
   const { data: existing } = await context.admin
-    .from("group_members")
+    .from("slim_group_members")
     .select("*")
     .eq("group_id", group.id)
     .eq("user_id", context.user.id)
     .maybeSingle();
 
   if (!existing) {
-    const { error: insertError } = await context.admin.from("group_members").insert({
+    const { error: insertError } = await context.admin.from("slim_group_members").insert({
       group_id: group.id,
       user_id: context.user.id,
       role: "member"

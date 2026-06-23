@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { data, error } = await context.admin
-    .from("profiles")
+    .from("slim_profiles")
     .select("id,email,full_name,nickname,avatar_url,locale")
     .eq("id", context.user.id)
     .single();
@@ -39,7 +39,7 @@ export async function PATCH(request: NextRequest) {
   const locale = body.locale === "zh" || body.locale === "en" ? body.locale : null;
 
   const { data, error } = await context.admin
-    .from("profiles")
+    .from("slim_profiles")
     .update({
       full_name: cleanText(body.fullName, 80),
       nickname: cleanText(body.nickname, 40),
