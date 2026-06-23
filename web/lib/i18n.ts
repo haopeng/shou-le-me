@@ -227,13 +227,16 @@ export const copy = {
   }
 } satisfies Record<Language, Record<string, string>>;
 
+export function normalizeLanguage(value: unknown): Language | null {
+  return value === "zh" || value === "en" ? value : null;
+}
+
 export function getUrlLanguage(): Language | null {
   if (typeof window === "undefined") {
     return null;
   }
 
-  const language = new URLSearchParams(window.location.search).get("lang");
-  return language === "zh" || language === "en" ? language : null;
+  return normalizeLanguage(new URLSearchParams(window.location.search).get("lang"));
 }
 
 export function getInitialLanguage(): Language {
