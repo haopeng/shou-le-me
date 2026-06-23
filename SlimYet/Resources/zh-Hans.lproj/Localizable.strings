@@ -1,0 +1,83 @@
+"app.title" = "瘦了么";
+
+"unit.title" = "单位";
+"unit.kg" = "公斤";
+"unit.lb" = "磅";
+
+"entry.title" = "记录体重";
+"entry.subtitle" = "一个数字，一个小进展";
+"entry.date" = "日期";
+"entry.weight.placeholder" = "0.0";
+"entry.note.placeholder" = "备注";
+"entry.save" = "保存这个进展";
+
+"hero.kicker" = "今天的小提示";
+"hero.title.empty" = "准备捕捉第一个亮点";
+"hero.title.latest" = "已记录 %@";
+"hero.subtitle.empty" = "记录一次，瘦了么就开始替你寻找趋势里的好消息。";
+"hero.subtitle.personalLow" = "这是一个新的最好成绩。安静但很棒。";
+"hero.subtitle.sevenDayLow" = "发现近 7 天新低。趋势在悄悄夸你。";
+"hero.subtitle.belowAverage" = "低于近期均值。小信号，也是真信号。";
+"hero.subtitle.weeklyAverage" = "周均值正在下降。这个势头值得亮一下。";
+"hero.subtitle.streak" = "记录节奏已经建立。坚持正在发挥作用。";
+"hero.logs" = "记录";
+"hero.best" = "最好";
+"hero.best.empty" = "马上";
+
+"empty.title" = "从第一条记录开始";
+"empty.message" = "输入一次体重，瘦了么会开始寻找小进展、温柔趋势，以及藏在数字里的好消息。";
+
+"celebration.title" = "已保存";
+"celebration.saved.message" = "打卡完成，趋势又聪明了一点。";
+"celebration.personalLow.message" = "发现历史新低，这是一个正经亮点。";
+"celebration.sevenDayLow.message" = "近 7 天新低。很不错的小胜利。";
+"celebration.belowAverage.message" = "低于近期均值，这个信号值得看见。";
+"celebration.weeklyAverage.message" = "周均值下降了，势头出现。";
+"celebration.streak.message" = "连续 %d 天记录，节奏很好。";
+
+"insights.title" = "亮点";
+"insight.personalLow.title" = "目前最好";
+"insight.personalLow.message" = "%@，比之前最好成绩低 %@。";
+"insight.sevenDayLow.title" = "近 7 天新低";
+"insight.sevenDayLow.message" = "%@，比本周此前最低低 %@。";
+"insight.belowAverage.title" = "低于均值";
+"insight.belowAverage.message" = "%@，比近期平均低 %@。";
+"insight.weeklyAverage.title" = "周均值在降";
+"insight.weeklyAverage.message" = "%@ 的均值，比上周低 %@。";
+"insight.streak.title" = "节奏点亮";
+"insight.streak.message" = "已经连续 %d 天。";
+"insight.gettingStarted.title" = "信号正在积累";
+"insight.gettingStarted.message" = "再多记录几天，就会出现更敏锐的趋势亮点。";
+"insight.tag.best" = "最好";
+"insight.tag.week" = "本周";
+"insight.tag.signal" = "信号";
+"insight.tag.trend" = "趋势";
+"insight.tag.rhythm" = "节奏";
+"insight.tag.start" = "开始";
+
+"chart.title" = "趋势丝带";
+"chart.subtitle" = "最新点、低点和均线";
+"chart.count" = "%d 条";
+"chart.needsMore" = "再记录一次，就能画出趋势丝带。";
+"chart.accessibility" = "体重趋势图";
+"chart.badge.ready" = "准备好";
+"chart.badge.steady" = "很稳定";
+"chart.badge.down" = "下降 %@";
+"chart.badge.up" = "上升 %@";
+
+"scores.title" = "鼓励卡片";
+"score.latest.title" = "最新";
+"score.latest.caption" = "最近一次打卡";
+"score.latest.tag" = "现在";
+"score.momentum.title" = "势头";
+"score.momentum.caption" = "7 天均值对比上周";
+"score.momentum.tag" = "移动";
+"score.low.title" = "30 天低点";
+"score.low.caption" = "近期最低标记";
+"score.low.tag" = "发光";
+"score.consistency.title" = "节奏";
+"score.consistency.caption" = "过去 14 天记录天数";
+"score.consistency.tag" = "打拍";
+
+"history.title" = "最近记录";
+"history.delete" = "删除记录";

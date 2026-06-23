@@ -1,0 +1,83 @@
+"app.title" = "Slim Yet?";
+
+"unit.title" = "Unit";
+"unit.kg" = "kg";
+"unit.lb" = "lb";
+
+"entry.title" = "Log weight";
+"entry.subtitle" = "One number, one tiny win";
+"entry.date" = "Date";
+"entry.weight.placeholder" = "0.0";
+"entry.note.placeholder" = "Note";
+"entry.save" = "Save the win";
+
+"hero.kicker" = "Today's nudge";
+"hero.title.empty" = "Ready for your first bright spot";
+"hero.title.latest" = "%@ logged";
+"hero.subtitle.empty" = "Add a check-in and SlimYet will start watching for cheerful trend signals.";
+"hero.subtitle.personalLow" = "That is a best-yet moment. Quietly excellent.";
+"hero.subtitle.sevenDayLow" = "Fresh weekly low found. The trend has something nice to say.";
+"hero.subtitle.belowAverage" = "You are under the recent average. Small signal, real signal.";
+"hero.subtitle.weeklyAverage" = "The weekly average is easing down. That deserves a little glow.";
+"hero.subtitle.streak" = "Your rhythm is building. Consistency is doing its quiet work.";
+"hero.logs" = "Logs";
+"hero.best" = "Best";
+"hero.best.empty" = "Soon";
+
+"empty.title" = "Your first signal starts here";
+"empty.message" = "Add one weight entry. SlimYet will start looking for tiny wins, gentle trends, and good news hiding in the numbers.";
+
+"celebration.title" = "Saved";
+"celebration.saved.message" = "Check-in complete. The trend just got smarter.";
+"celebration.personalLow.message" = "New personal low detected. That is a proper highlight.";
+"celebration.sevenDayLow.message" = "Fresh 7-day low. Nice little win.";
+"celebration.belowAverage.message" = "Below your recent average. That signal is worth noticing.";
+"celebration.weeklyAverage.message" = "Weekly average moved down. Momentum is showing up.";
+"celebration.streak.message" = "%d-day rhythm saved. Consistency counts.";
+
+"insights.title" = "Highlights";
+"insight.personalLow.title" = "Best yet";
+"insight.personalLow.message" = "%@, down %@ from your previous best.";
+"insight.sevenDayLow.title" = "Fresh weekly low";
+"insight.sevenDayLow.message" = "%@, %@ lower than this week's prior low.";
+"insight.belowAverage.title" = "Under the average";
+"insight.belowAverage.message" = "%@, sitting %@ under your recent average.";
+"insight.weeklyAverage.title" = "Average easing down";
+"insight.weeklyAverage.message" = "%@ average, %@ lower than last week.";
+"insight.streak.title" = "Rhythm unlocked";
+"insight.streak.message" = "%d days in a row.";
+"insight.gettingStarted.title" = "Signals warming up";
+"insight.gettingStarted.message" = "A few more entries will unlock sharper trend highlights.";
+"insight.tag.best" = "Best";
+"insight.tag.week" = "Week";
+"insight.tag.signal" = "Signal";
+"insight.tag.trend" = "Trend";
+"insight.tag.rhythm" = "Rhythm";
+"insight.tag.start" = "Start";
+
+"chart.title" = "Trend ribbon";
+"chart.subtitle" = "Latest, low point, and average line";
+"chart.count" = "%d logs";
+"chart.needsMore" = "Add one more log to draw the ribbon.";
+"chart.accessibility" = "Weight trend chart";
+"chart.badge.ready" = "Ready";
+"chart.badge.steady" = "Steady";
+"chart.badge.down" = "Down %@";
+"chart.badge.up" = "Up %@";
+
+"scores.title" = "Score cards";
+"score.latest.title" = "Latest";
+"score.latest.caption" = "Most recent check-in";
+"score.latest.tag" = "Now";
+"score.momentum.title" = "Momentum";
+"score.momentum.caption" = "7-day average vs prior week";
+"score.momentum.tag" = "Move";
+"score.low.title" = "30-day low";
+"score.low.caption" = "Lowest recent marker";
+"score.low.tag" = "Glow";
+"score.consistency.title" = "Rhythm";
+"score.consistency.caption" = "Logged days in the last 14";
+"score.consistency.tag" = "Beat";
+
+"history.title" = "Recent logs";
+"history.delete" = "Delete log";

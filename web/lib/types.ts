@@ -1,0 +1,86 @@
+export type Language = "en" | "zh";
+export type WeightUnit = "kg" | "lb";
+
+export type Profile = {
+  id: string;
+  email: string | null;
+  fullName: string | null;
+  nickname: string | null;
+  avatarUrl: string | null;
+  locale: Language | null;
+};
+
+export type GroupSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  inviteCode: string;
+  ownerId: string;
+  createdAt: string;
+  memberCount: number;
+  myRole: "owner" | "member";
+  myBaseReady: boolean;
+  myBaseDate: string | null;
+};
+
+export type SparkPoint = {
+  date: string;
+  deltaKg: number;
+};
+
+export type DashboardMember = {
+  memberId: string;
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  role: "owner" | "member";
+  joinedAt: string;
+  baseDate: string | null;
+  latestDate: string | null;
+  deltaKg: number | null;
+  previousDeltaKg: number | null;
+  daysLogged: number;
+  rank: number | null;
+  badges: string[];
+  sparkline: SparkPoint[];
+  isMe: boolean;
+};
+
+export type OwnLog = {
+  id: string;
+  recordedOn: string;
+  weightKg: number;
+  note: string | null;
+  deltaKg: number | null;
+};
+
+export type GroupDashboard = {
+  group: {
+    id: string;
+    name: string;
+    description: string | null;
+    inviteCode: string;
+    ownerId: string;
+    createdAt: string;
+  };
+  me: {
+    memberId: string;
+    role: "owner" | "member";
+    baseReady: boolean;
+    baseDate: string | null;
+  };
+  stats: {
+    memberCount: number;
+    readyCount: number;
+    loggedTodayCount: number;
+    totalLossKg: number;
+    bestDeltaKg: number | null;
+  };
+  members: DashboardMember[];
+  ownLogs: OwnLog[];
+};
+
+export type ApiError = {
+  error: string;
+  code?: string;
+};
