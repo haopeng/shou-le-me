@@ -125,6 +125,51 @@ function DeltaSparkline({
   );
 }
 
+function DeltaTrendChart({
+  points,
+  winner,
+  language
+}: {
+  points: GroupDashboard["members"][number]["sparkline"];
+  winner?: boolean;
+  language: Language;
+}) {
+  if (points.length < 2) {
+    return <div className="trend-empty-line">{copy[language].noTrend}</div>;
+  }
+
+  const width = 420;
+  const height = 150;
+  const values = points.map((point) => point.deltaKg);
+  const min = Math.min(...values, -0.5);
+  const max = Math.max(...values, 0.5);
+  const range = max - min || 1;
+  const yFor = (value: number) => height - 18 - ((value - min) / range) * (height - 34);
+  const xFor = (index: number) => 18 + (index / (points.length - 1)) * (width - 36);
+  const path = points
+    .map((point, index) => {
+      const command = index === 0 ? "M" : "L";
+      return `${command} ${xFor(index).toFixed(2)} ${yFor(point.deltaKg).toFixed(2)}`;
+    })
+    .join(" ");
+  const fillPath = `${path} L ${xFor(points.length - 1).toFixed(2)} ${height - 18} L 18 ${
+    height - 18
+  } Z`;
+  const latest = points.at(-1)!;
+
+  return (
+    <svg className="trend-plot" viewBox={`0 0 ${width} ${height}`} role="img">
+      <path
+        d={`M 18 ${yFor(0).toFixed(2)} L ${width - 18} ${yFor(0).toFixed(2)}`}
+        className="trend-zero"
+      />
+      <path d={fillPath} className={winner ? "trend-fill winner" : "trend-fill"} />
+      <path d={path} className={winner ? "trend-path winner" : "trend-path"} />
+      <circle cx={xFor(points.length - 1)} cy={yFor(latest.deltaKg)} r="6" className="trend-dot" />
+    </svg>
+  );
+}
+
 function OwnWeightChart({
   dashboard,
   unit,
@@ -251,6 +296,41 @@ function formatDeltaText(deltaKg: number, unit: WeightUnit, language: Language) 
   return `${sign}${formatNumber(value)} ${copy[language][unit]}`;
 }
 
+function highlightText(
+  highlight: GroupDashboard["members"][number]["highlights"][number],
+  unit: WeightUnit,
+  language: Language
+) {
+  const t = copy[language];
+  const value = highlight.valueKg;
+
+  switch (highlight.kind) {
+    case "base_needed":
+      return t.highlightBaseNeeded;
+    case "current_delta":
+      return `${t.highlightCurrentDelta}: ${formatDeltaText(value ?? 0, unit, language)}`;
+    case "latest_move": {
+      const key: keyof typeof t =
+        value === null || value === 0
+          ? "highlightLatestMoveFlat"
+          : value < 0
+            ? "highlightLatestMoveDown"
+            : "highlightLatestMoveUp";
+      return `${t[key]}: ${formatDeltaText(value ?? 0, unit, language)}`;
+    }
+    case "best_point":
+      return `${t.highlightBestPoint}: ${formatDeltaText(value ?? 0, unit, language)}`;
+    case "below_average":
+      return `${t.highlightBelowAverage}: ${formatNumber(toDisplayWeight(value ?? 0, unit))} ${
+        t[unit]
+      }`;
+    case "consistency":
+      return `${t.highlightConsistency}: ${highlight.count ?? 0}`;
+    default:
+      return "";
+  }
+}
+
 function feedCheer(item: FeedItem, language: Language) {
   const t = copy[language];
 
@@ -309,6 +389,76 @@ function feedSentence(item: FeedItem, unit: WeightUnit, language: Language) {
   }
 
   return `${item.actorName} ${t.feedShowingUp}.`;
+}
+
+function MemberTrendBoard({
+  dashboard,
+  unit,
+  language
+}: {
+  dashboard: GroupDashboard;
+  unit: WeightUnit;
+  language: Language;
+}) {
+  const t = copy[language];
+
+  return (
+    <section className="panel trend-board-panel">
+      <div className="chart-heading">
+        <div>
+          <div className="panel-title">
+            <LineChart size={18} />
+            <span>{t.trendBoard}</span>
+          </div>
+          <p className="micro-copy">{t.trendBoardHint}</p>
+        </div>
+      </div>
+
+      <div className="trend-card-grid">
+        {dashboard.members.map((member) => {
+          const displayDelta =
+            member.deltaKg === null ? null : toDisplayWeight(member.deltaKg, unit);
+          const winner = member.rank === 1;
+
+          return (
+            <article
+              className={classNames("trend-card", winner && "winner", member.isMe && "me")}
+              key={member.memberId}
+            >
+              <div className="trend-card-head">
+                <Avatar name={member.displayName} url={member.avatarUrl} />
+                <div>
+                  <div className="leader-name">
+                    <strong>{member.displayName}</strong>
+                    {member.isMe && <span>{t.you}</span>}
+                  </div>
+                  <small>
+                    {member.rank ? `#${member.rank}` : "--"} · {member.daysLogged} {t.loggedDays}
+                  </small>
+                </div>
+                <div className="trend-delta">
+                  <strong className={displayDelta !== null && displayDelta <= 0 ? "good" : "warm"}>
+                    {displayDelta === null ? "--" : `${formatNumber(displayDelta)} ${t[unit]}`}
+                  </strong>
+                  <span>{t.delta}</span>
+                </div>
+              </div>
+
+              <DeltaTrendChart points={member.sparkline} winner={winner} language={language} />
+
+              <div className="highlight-list">
+                {member.highlights.map((highlight, index) => (
+                  <span className={highlight.tone} key={`${highlight.kind}-${index}`}>
+                    {highlightText(highlight, unit, language)}
+                  </span>
+                ))}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
 }
 
 function FeedPanel({
@@ -1183,6 +1333,8 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                   </strong>
                 </div>
               </section>
+
+              <MemberTrendBoard dashboard={dashboard} unit={unit} language={language} />
 
               <section className="action-row">
                 <form className="action-panel" onSubmit={handleBase}>

@@ -42,6 +42,9 @@ export const copy = {
     saveLog: "Save log",
     feed: "Group feed",
     noFeed: "No group sparks yet. Log a weight to start the cheers.",
+    trendBoard: "Trend board",
+    trendBoardHint: "Bigger delta plots and the wins SlimYet noticed for each member.",
+    noTrend: "Set a private base and log two weights to draw the trend.",
     leaderboard: "Delta board",
     stream: "Momentum stream",
     myLogs: "My logs",
@@ -52,6 +55,7 @@ export const copy = {
     today: "Today",
     bestDrop: "Best drop",
     loggedToday: "Logged today",
+    loggedDays: "logged days",
     noBase: "Set your base to enter the board.",
     noLogs: "No logs yet.",
     privateBase: "base hidden",
@@ -90,7 +94,15 @@ export const copy = {
     reactionLike: "Like",
     reactionHeart: "Heart",
     reactionCare: "Care",
-    reactionThumbsDown: "Thumbs down"
+    reactionThumbsDown: "Thumbs down",
+    highlightBaseNeeded: "Needs a private base",
+    highlightCurrentDelta: "Current delta",
+    highlightLatestMoveDown: "Latest move down",
+    highlightLatestMoveUp: "Latest move up",
+    highlightLatestMoveFlat: "Latest move steady",
+    highlightBestPoint: "Best point",
+    highlightBelowAverage: "Below recent average",
+    highlightConsistency: "Logged days"
   },
   zh: {
     appName: "Slim Yet?",
@@ -133,6 +145,9 @@ export const copy = {
     saveLog: "保存记录",
     feed: "小组动态",
     noFeed: "还没有小组动态。记录一次体重，开始互相打气吧。",
+    trendBoard: "趋势看板",
+    trendBoardHint: "每个成员更清楚的变化曲线，以及 SlimYet 自动发现的小亮点。",
+    noTrend: "设置私密基准，并记录两次体重后就能看到趋势。",
     leaderboard: "变化榜",
     stream: "趋势流",
     myLogs: "我的记录",
@@ -143,6 +158,7 @@ export const copy = {
     today: "今日",
     bestDrop: "最大下降",
     loggedToday: "今日打卡",
+    loggedDays: "记录天数",
     noBase: "先设置基准，才能上榜。",
     noLogs: "还没有记录。",
     privateBase: "底重保密",
@@ -181,7 +197,15 @@ export const copy = {
     reactionLike: "赞",
     reactionHeart: "喜欢",
     reactionCare: "关心",
-    reactionThumbsDown: "踩一下"
+    reactionThumbsDown: "踩一下",
+    highlightBaseNeeded: "需要设置私密基准",
+    highlightCurrentDelta: "当前变化",
+    highlightLatestMoveDown: "最新继续下降",
+    highlightLatestMoveUp: "最新有所上升",
+    highlightLatestMoveFlat: "最新保持稳定",
+    highlightBestPoint: "最佳点",
+    highlightBelowAverage: "低于近期平均",
+    highlightConsistency: "记录天数"
   }
 } satisfies Record<Language, Record<string, string>>;
 

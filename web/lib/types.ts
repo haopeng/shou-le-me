@@ -29,6 +29,21 @@ export type SparkPoint = {
   deltaKg: number;
 };
 
+export type MemberHighlight = {
+  kind:
+    | "base_needed"
+    | "current_delta"
+    | "latest_move"
+    | "best_point"
+    | "below_average"
+    | "consistency";
+  valueKg: number | null;
+  auxKg: number | null;
+  date: string | null;
+  count: number | null;
+  tone: "good" | "steady" | "warm";
+};
+
 export type DashboardMember = {
   memberId: string;
   userId: string;
@@ -43,6 +58,7 @@ export type DashboardMember = {
   daysLogged: number;
   rank: number | null;
   badges: string[];
+  highlights: MemberHighlight[];
   sparkline: SparkPoint[];
   isMe: boolean;
 };

@@ -63,6 +63,21 @@ type ReactionRow = {
   reaction: ReactionType;
 };
 
+type MemberHighlight = {
+  kind:
+    | "base_needed"
+    | "current_delta"
+    | "latest_move"
+    | "best_point"
+    | "below_average"
+    | "consistency";
+  valueKg: number | null;
+  auxKg: number | null;
+  date: string | null;
+  count: number | null;
+  tone: "good" | "steady" | "warm";
+};
+
 const reactionTypes: ReactionType[] = ["like", "heart", "care", "thumbs_down"];
 
 function numberOrNull(value: number | string | null | undefined) {
@@ -120,6 +135,92 @@ function badgeKeys(logs: WeightLogRow[], baseWeight: number | null, latestWeight
   }
 
   return badges.slice(0, 4);
+}
+
+function memberHighlights(
+  logs: WeightLogRow[],
+  sparkline: Array<{ date: string; deltaKg: number }>,
+  deltaKg: number | null,
+  previousDeltaKg: number | null
+) {
+  const highlights: MemberHighlight[] = [];
+
+  if (deltaKg === null) {
+    return [
+      {
+        kind: "base_needed",
+        valueKg: null,
+        auxKg: null,
+        date: null,
+        count: null,
+        tone: "warm"
+      }
+    ];
+  }
+
+  highlights.push({
+    kind: "current_delta",
+    valueKg: deltaKg,
+    auxKg: null,
+    date: sparkline.at(-1)?.date ?? null,
+    count: null,
+    tone: deltaKg <= 0 ? "good" : "warm"
+  });
+
+  if (previousDeltaKg !== null) {
+    const move = roundTenth(deltaKg - previousDeltaKg) ?? 0;
+    highlights.push({
+      kind: "latest_move",
+      valueKg: move,
+      auxKg: previousDeltaKg,
+      date: sparkline.at(-1)?.date ?? null,
+      count: null,
+      tone: move < 0 ? "good" : move === 0 ? "steady" : "warm"
+    });
+  }
+
+  if (sparkline.length >= 2) {
+    const best = sparkline.reduce((winner, point) =>
+      point.deltaKg < winner.deltaKg ? point : winner
+    );
+    highlights.push({
+      kind: "best_point",
+      valueKg: best.deltaKg,
+      auxKg: null,
+      date: best.date,
+      count: null,
+      tone: "good"
+    });
+  }
+
+  const recent = sparkline.slice(-30);
+  if (recent.length >= 3) {
+    const average = recent.reduce((sum, point) => sum + point.deltaKg, 0) / recent.length;
+    const gap = roundTenth(average - deltaKg) ?? 0;
+    if (gap > 0) {
+      highlights.push({
+        kind: "below_average",
+        valueKg: gap,
+        auxKg: roundTenth(average),
+        date: null,
+        count: recent.length,
+        tone: "good"
+      });
+    }
+  }
+
+  if (logs.length >= 3) {
+    highlights.push({
+      kind: "consistency",
+      valueKg: null,
+      auxKg: null,
+      date: null,
+      count: logs.length,
+      tone: "steady"
+    });
+  }
+
+  return highlights.slice(0, 4);
 }
 
 export async function GET(request: NextRequest, context: RouteContext) {
@@ -254,6 +355,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         daysLogged: entry.logs.length,
         rank: rankByMember.get(entry.member.id) ?? null,
         badges: badgeKeys(entry.logs, entry.baseWeight, entry.latestWeight),
+        highlights: memberHighlights(entry.logs, sparkline, entry.deltaKg, entry.previousDeltaKg),
         sparkline,
         isMe: entry.member.user_id === auth.user.id
       };

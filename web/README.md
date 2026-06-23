@@ -12,7 +12,7 @@ Group weight tracking with private baselines and public delta competition.
 
 ## Privacy Model
 
-Each user keeps one personal weight history. The same user can join or create many groups, and each group membership can choose a different private base weight and date. Other members only see delta values, ranks, badges, delta sparklines, and feed updates. A user can still see their own real weight history and graph.
+Each user keeps one personal weight history. The same user can join or create many groups, and each group membership can choose a different private base weight and date. Other members only see delta values, ranks, badges, per-member delta trend plots, automatic highlight summaries, and feed updates. A user can still see their own real weight history and graph.
 
 When a user logs a new weight, the API recomputes that user's current delta for every group where they have a private base, then writes friendly feed updates such as a delta moving from one value to another. Group members can react with like, heart, care, or thumbs down.
 

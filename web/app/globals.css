@@ -615,6 +615,152 @@ label span {
   align-items: start;
 }
 
+.trend-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.trend-card {
+  min-width: 0;
+  border: 1px solid rgba(31, 41, 51, 0.08);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.74);
+  padding: 12px;
+}
+
+.trend-card.winner {
+  border-color: rgba(255, 184, 77, 0.6);
+  background:
+    linear-gradient(135deg, rgba(255, 184, 77, 0.16), rgba(255, 255, 255, 0.78)),
+    #fff;
+}
+
+.trend-card.me {
+  box-shadow: inset 4px 0 0 var(--aqua);
+}
+
+.trend-card-head {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.trend-card-head small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 780;
+}
+
+.trend-delta {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+.trend-delta strong {
+  font-size: 1rem;
+}
+
+.trend-delta span {
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 850;
+}
+
+.trend-plot {
+  width: 100%;
+  height: auto;
+  margin-top: 12px;
+  overflow: visible;
+}
+
+.trend-zero {
+  fill: none;
+  stroke: rgba(31, 41, 51, 0.14);
+  stroke-dasharray: 5 7;
+  stroke-width: 2;
+}
+
+.trend-fill {
+  fill: rgba(36, 198, 188, 0.12);
+}
+
+.trend-fill.winner {
+  fill: rgba(255, 86, 63, 0.12);
+}
+
+.trend-path {
+  fill: none;
+  stroke: var(--aqua);
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.trend-path.winner {
+  stroke: var(--hot);
+}
+
+.trend-dot {
+  fill: #fff;
+  stroke: var(--hot);
+  stroke-width: 4;
+}
+
+.trend-empty-line {
+  display: grid;
+  place-items: center;
+  min-height: 118px;
+  margin-top: 12px;
+  border: 1px dashed rgba(31, 41, 51, 0.14);
+  border-radius: var(--radius);
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.42);
+  padding: 12px;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.highlight-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 11px;
+}
+
+.highlight-list span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  max-width: 100%;
+  border-radius: 999px;
+  padding: 0 8px;
+  font-size: 0.7rem;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.highlight-list .good {
+  color: #13766f;
+  background: rgba(36, 198, 188, 0.14);
+}
+
+.highlight-list .steady {
+  color: #4c5680;
+  background: rgba(112, 100, 255, 0.11);
+}
+
+.highlight-list .warm {
+  color: #9d2b33;
+  background: rgba(255, 86, 63, 0.12);
+}
+
 .leaderboard {
   display: grid;
   gap: 9px;
@@ -1001,6 +1147,10 @@ label span {
   .side-rail {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .trend-card-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 940px) {
@@ -1055,6 +1205,7 @@ label span {
 
   .score-strip,
   .side-rail,
+  .trend-card-grid,
   .inline-fields,
   .action-panel:last-child .inline-fields {
     grid-template-columns: 1fr;

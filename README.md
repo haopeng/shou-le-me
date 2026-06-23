@@ -22,7 +22,7 @@ SlimYet should feel like a tiny coach that notices progress without making weigh
 
 ## Web Group Version
 
-The `web/` app is a Next.js + Supabase version for fast deployment. It supports email/password auth, Google auth when enabled in Supabase, profile names/avatars, group creation, invite links, private base weights, delta-only leaderboards, group activity feeds with reactions, bilingual English/Chinese UI, and a self-only real-weight graph.
+The `web/` app is a Next.js + Supabase version for fast deployment. It supports email/password auth, Google auth when enabled in Supabase, profile names/avatars, group creation, invite links, private base weights, per-member delta trend plots, automatic member highlights, delta-only leaderboards, group activity feeds with reactions, bilingual English/Chinese UI, and a self-only real-weight graph.
 
 Privacy model: each person has one private weight history, but each group membership can use a different base date/weight. Group dashboards and feeds only show each member's delta from that group's private base. The signed-in user can see their own actual weight history and graph.
 
