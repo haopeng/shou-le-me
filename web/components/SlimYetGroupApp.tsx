@@ -946,10 +946,33 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     return (
       <main className="app-shell centered-shell">
         <section className="config-panel">
-          <Image src="/brand/thermal-jewel.png" alt="" width={96} height={96} priority />
-          <h1>{t.appName}</h1>
-          <p>{t.configuredSoon}</p>
+          <div className="config-brand">
+            <Image src="/brand/thermal-jewel.png" alt="" width={92} height={92} priority />
+            <div>
+              <p className="eyebrow">{t.cnName}</p>
+              <h1>{t.appName}</h1>
+            </div>
+          </div>
+          <div className="setup-pill">
+            <ShieldCheck size={16} />
+            <span>{t.setupStatus}</span>
+          </div>
+          <h2>{t.configuredSoon}</h2>
           <p>{t.envHelp}</p>
+          <div className="setup-points">
+            <span>
+              <Lock size={16} />
+              {t.setupPointPrivacy}
+            </span>
+            <span>
+              <LineChart size={16} />
+              {t.setupPointTrends}
+            </span>
+            <span>
+              <Heart size={16} />
+              {t.setupPointCheer}
+            </span>
+          </div>
         </section>
       </main>
     );

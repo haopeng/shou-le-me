@@ -209,18 +209,86 @@ label span {
 }
 
 .config-panel {
-  width: min(440px, calc(100vw - 36px));
-  padding: 26px;
-  text-align: center;
+  width: min(760px, calc(100vw - 36px));
+  display: grid;
+  gap: 18px;
+  padding: clamp(24px, 5vw, 46px);
+}
+
+.config-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  text-align: left;
+}
+
+.config-brand img {
+  border-radius: 8px;
+  box-shadow: 0 14px 36px rgba(255, 86, 63, 0.22);
+}
+
+.config-panel h1,
+.config-panel h2 {
+  margin: 0;
 }
 
 .config-panel h1 {
-  margin: 14px 0 8px;
+  font-size: clamp(2rem, 5vw, 3.6rem);
+  line-height: 0.95;
+}
+
+.config-panel h2 {
+  text-align: center;
+  font-size: clamp(1.4rem, 3vw, 2.2rem);
 }
 
 .config-panel p {
+  width: min(570px, 100%);
+  margin: 0 auto;
   color: var(--muted);
+  text-align: center;
+  font-size: clamp(1rem, 2vw, 1.18rem);
   line-height: 1.45;
+}
+
+.setup-pill {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  justify-self: center;
+  gap: 7px;
+  min-height: 34px;
+  border: 1px solid rgba(255, 86, 63, 0.22);
+  border-radius: 999px;
+  color: var(--hot-deep);
+  background: rgba(255, 86, 63, 0.1);
+  padding: 0 12px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.setup-points {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.setup-points span {
+  min-height: 58px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid rgba(31, 41, 51, 0.08);
+  border-radius: var(--radius);
+  color: #394657;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 10px;
+  text-align: center;
+  font-size: 0.86rem;
+  font-weight: 850;
 }
 
 .top-actions {
@@ -1206,9 +1274,15 @@ label span {
   .score-strip,
   .side-rail,
   .trend-card-grid,
+  .setup-points,
   .inline-fields,
   .action-panel:last-child .inline-fields {
     grid-template-columns: 1fr;
+  }
+
+  .config-brand {
+    flex-direction: column;
+    text-align: center;
   }
 
   .leader-row {
