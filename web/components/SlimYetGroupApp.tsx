@@ -30,7 +30,7 @@ import {
   Weight
 } from "lucide-react";
 import Image from "next/image";
-import { FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   copy,
@@ -1091,6 +1091,39 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
     setMessage(nextMessage);
   }
 
+  function handleLocalAvatarUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/") || file.size > 1_500_000) {
+      setError(t.errorFallback);
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const avatarUrl = typeof reader.result === "string" ? reader.result : null;
+      if (!avatarUrl) {
+        setError(t.errorFallback);
+        return;
+      }
+
+      setProfileForm((current) => ({ ...current, avatarUrl }));
+      setState((current) => ({
+        ...current,
+        avatarUrl,
+        groups: syncLocalMe(current.groups, current.ownLogs, current.nickname, avatarUrl)
+      }));
+      showMessage(t.avatarUploaded);
+    };
+    reader.onerror = () => setError(t.errorFallback);
+    reader.readAsDataURL(file);
+  }
+
   function handleSaveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setState((current) => {
@@ -1438,6 +1471,17 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
             <div className="panel-title">
               <UserRound size={18} />
               <span>{t.profile}</span>
+            </div>
+            <div className="profile-avatar-row">
+              <Avatar
+                name={profileForm.nickname || state.nickname || t.you}
+                url={profileForm.avatarUrl || state.avatarUrl}
+              />
+              <label className="avatar-upload-button">
+                <ImageIcon size={16} />
+                <span>{t.choosePhoto}</span>
+                <input type="file" accept="image/*" onChange={handleLocalAvatarUpload} />
+              </label>
             </div>
             <form className="compact-form" onSubmit={handleSaveProfile}>
               <label>
@@ -2094,6 +2138,47 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     });
   }
 
+  async function handleAvatarUpload(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+    event.currentTarget.value = "";
+
+    if (!file || !session) {
+      return;
+    }
+
+    await run("avatar", async () => {
+      const formData = new FormData();
+      formData.append("avatar", file);
+
+      const response = await fetch("/api/me/avatar", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        },
+        body: formData
+      });
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        profile?: Profile;
+      };
+
+      if (!response.ok || !payload.profile) {
+        throw new Error(payload.error ?? t.errorFallback);
+      }
+
+      setProfile(payload.profile);
+      setProfileForm((current) => ({
+        ...current,
+        avatarUrl: payload.profile?.avatarUrl ?? ""
+      }));
+      setMessage(t.avatarUploaded);
+      await loadMeAndGroups();
+      if (selectedGroupId) {
+        await loadDashboard(selectedGroupId);
+      }
+    });
+  }
+
   async function handleCreateGroup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await run("create", async () => {
@@ -2431,6 +2516,22 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
               <span>{t.profile}</span>
             </div>
             {profile?.email && <p className="profile-email">{profile.email}</p>}
+            <div className="profile-avatar-row">
+              <Avatar
+                name={profileForm.nickname || profileForm.fullName || profile?.email || t.you}
+                url={profileForm.avatarUrl || profile?.avatarUrl || null}
+              />
+              <label className="avatar-upload-button">
+                <ImageIcon size={16} />
+                <span>{busy === "avatar" ? t.uploadingAvatar : t.choosePhoto}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  disabled={busy === "avatar"}
+                  onChange={handleAvatarUpload}
+                />
+              </label>
+            </div>
             <form className="compact-form" onSubmit={handleSaveProfile}>
               <label>
                 <span>{t.fullName}</span>

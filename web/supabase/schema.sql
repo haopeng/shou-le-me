@@ -76,6 +76,20 @@ create table if not exists public.slim_feed_reactions (
   unique (feed_item_id, user_id)
 );
 
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'slim-avatars',
+  'slim-avatars',
+  true,
+  5242880,
+  array['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+)
+on conflict (id) do update
+set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
 alter table public.slim_weight_logs
 add column if not exists user_id uuid references public.slim_profiles(id) on delete cascade;
 

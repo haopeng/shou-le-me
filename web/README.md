@@ -7,6 +7,7 @@ Group weight tracking with private baselines and public delta competition.
 - Next.js App Router
 - Supabase Auth
 - Supabase Postgres
+- Supabase Storage for uploaded profile avatars
 - Server-side API routes for privacy-safe group dashboards
 - English and Simplified Chinese UI
 
@@ -26,7 +27,7 @@ The browser uses Supabase Auth for login. All group and weight data flows throug
 4. Enable Email auth in Supabase Auth.
 5. Optional: enable Google auth in Supabase Auth Providers.
 
-The SQL uses `slim_*` table names, so it is safe to install into an existing Supabase project that already has another app's tables.
+The SQL uses `slim_*` table names and a `slim-avatars` Storage bucket, so it is safe to install into an existing Supabase project that already has another app's tables.
 
 ## Environment Variables
 

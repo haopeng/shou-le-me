@@ -928,6 +928,49 @@ label span {
   white-space: nowrap;
 }
 
+.profile-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 13px;
+}
+
+.profile-avatar-row .avatar {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 auto;
+  font-size: 1rem;
+}
+
+.avatar-upload-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--ink);
+  background: #fff;
+  padding: 0 13px;
+  font-size: 0.84rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.avatar-upload-button input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.avatar-upload-button:has(input:disabled) {
+  cursor: wait;
+  opacity: 0.62;
+}
+
 .leader-main {
   min-width: 0;
 }
