@@ -39,7 +39,7 @@ import {
   setUrlLanguage,
   withLanguageParam
 } from "@/lib/i18n";
-import { hasSupabaseConfig, supabase } from "@/lib/supabaseClient";
+import { hasSupabaseConfig, supabase, supabaseAnonKey, supabaseUrl } from "@/lib/supabaseClient";
 import type {
   FeedItem,
   GroupDashboard,
@@ -54,6 +54,12 @@ type AuthMode = "signin" | "signup" | "reset" | "recover";
 
 type SlimYetGroupAppProps = {
   inviteCode?: string;
+};
+
+type SupabaseAuthSettings = {
+  external?: {
+    google?: boolean;
+  };
 };
 
 const KG_PER_LB = 0.45359237;
@@ -1817,6 +1823,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   const [logForm, setLogForm] = useState({ weight: "", date: todayIso(), note: "" });
   const [handledInvite, setHandledInvite] = useState<string | null>(null);
   const [origin, setOrigin] = useState("https://shou-le-me.vercel.app");
+  const [googleEnabled, setGoogleEnabled] = useState<boolean | null>(null);
 
   const t = copy[language];
 
@@ -1837,6 +1844,24 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   useEffect(() => {
     window.localStorage.setItem("slim-yet-unit", unit);
   }, [unit]);
+
+  useEffect(() => {
+    if (!supabaseUrl || !supabaseAnonKey) {
+      setGoogleEnabled(false);
+      return;
+    }
+
+    fetch(`${supabaseUrl}/auth/v1/settings`, {
+      headers: {
+        apikey: supabaseAnonKey
+      }
+    })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((settings: SupabaseAuthSettings | null) => {
+        setGoogleEnabled(Boolean(settings?.external?.google));
+      })
+      .catch(() => setGoogleEnabled(null));
+  }, []);
 
   useEffect(() => {
     if (!supabase) {
@@ -1977,7 +2002,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     if (authMode === "reset") {
       await run("auth", async () => {
         const { error: resetError } = await client.auth.resetPasswordForEmail(email, {
-          redirectTo: window.location.origin
+          redirectTo: window.location.href
         });
         if (resetError) {
           throw resetError;
@@ -2006,7 +2031,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
               email,
               password,
               options: {
-                emailRedirectTo: window.location.origin
+                emailRedirectTo: window.location.href
               }
             })
           : await client.auth.signInWithPassword({ email, password });
@@ -2027,11 +2052,17 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       return;
     }
 
+    if (googleEnabled === false) {
+      setMessage(null);
+      setError(t.googleNotEnabled);
+      return;
+    }
+
     await run("google", async () => {
       const { error: googleError } = await client.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: window.location.origin
+          redirectTo: window.location.href
         }
       });
       if (googleError) {
@@ -2325,15 +2356,19 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
             </button>
           </form>
 
-          <button
-            className="secondary-button full"
-            type="button"
-            onClick={handleGoogle}
-            disabled={busy === "google"}
-          >
-            <Sparkles size={17} />
-            {t.continueWithGoogle}
-          </button>
+          {googleEnabled === false ? (
+            <p className="form-message">{t.googleNotEnabled}</p>
+          ) : (
+            <button
+              className="secondary-button full"
+              type="button"
+              onClick={handleGoogle}
+              disabled={busy === "google"}
+            >
+              <Sparkles size={17} />
+              {t.continueWithGoogle}
+            </button>
+          )}
 
           {(message || error) && (
             <p className={error ? "form-message error" : "form-message"}>{error ?? message}</p>
