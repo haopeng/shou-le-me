@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Slim Yet? / 瘦了么",
+  title: "Slim Yet?",
   description: "Fun group weight tracking with private baselines and public progress deltas.",
   icons: {
     icon: "/brand/thermal-jewel.png",

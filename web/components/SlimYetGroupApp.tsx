@@ -592,6 +592,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
 
   useEffect(() => {
     document.documentElement.lang = language === "zh" ? "zh-Hans" : "en";
+    document.title = copy[language].appName;
     window.localStorage.setItem("slim-yet-language", language);
   }, [language]);
 
@@ -941,15 +942,27 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   const topMember = dashboard?.members.find((member) => member.rank === 1) ?? null;
   const labelForBadge = (badge: string) =>
     badge in t ? t[badge as keyof typeof t] : badge.replace(/^badge/, "");
+  const toggleLanguage = () => setLanguage(language === "en" ? "zh" : "en");
+  const languageButtonLabel = language === "en" ? "中文" : "EN";
 
   if (!hasSupabaseConfig) {
     return (
       <main className="app-shell centered-shell">
         <section className="config-panel">
+          <div className="config-actions">
+            <button
+              className="icon-button language-button"
+              type="button"
+              onClick={toggleLanguage}
+              aria-label="Switch language"
+            >
+              <Languages size={18} />
+              <span>{languageButtonLabel}</span>
+            </button>
+          </div>
           <div className="config-brand">
             <Image src="/brand/thermal-jewel.png" alt="" width={92} height={92} priority />
             <div>
-              <p className="eyebrow">{t.cnName}</p>
               <h1>{t.appName}</h1>
             </div>
           </div>
@@ -996,7 +1009,6 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
           <div className="brand-row">
             <Image src="/brand/thermal-jewel.png" alt="" width={86} height={86} priority />
             <div>
-              <p className="eyebrow">{t.cnName}</p>
               <h1>{t.appName}</h1>
             </div>
           </div>
@@ -1020,12 +1032,13 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
         <section className="auth-panel">
           <div className="top-actions">
             <button
-              className="icon-button"
+              className="icon-button language-button"
               type="button"
-              onClick={() => setLanguage(language === "en" ? "zh" : "en")}
+              onClick={toggleLanguage}
               aria-label="Switch language"
             >
               <Languages size={18} />
+              <span>{languageButtonLabel}</span>
             </button>
           </div>
 
@@ -1136,7 +1149,6 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
         <div className="brand-row compact">
           <Image src="/brand/spark-coin.png" alt="" width={58} height={58} priority />
           <div>
-            <p className="eyebrow">{t.cnName}</p>
             <h1>{t.appName}</h1>
           </div>
         </div>
@@ -1158,12 +1170,13 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
             </button>
           </div>
           <button
-            className="icon-button"
+            className="icon-button language-button"
             type="button"
-            onClick={() => setLanguage(language === "en" ? "zh" : "en")}
+            onClick={toggleLanguage}
             aria-label="Switch language"
           >
             <Languages size={18} />
+            <span>{languageButtonLabel}</span>
           </button>
           <button className="icon-button" type="button" onClick={handleSignOut} aria-label={t.signOut}>
             <LogOut size={18} />

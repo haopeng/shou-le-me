@@ -215,6 +215,12 @@ label span {
   padding: clamp(24px, 5vw, 46px);
 }
 
+.config-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: -6px;
+}
+
 .config-brand {
   display: flex;
   align-items: center;
@@ -412,6 +418,17 @@ label span {
   border: 1px solid var(--line);
   color: var(--ink);
   background: rgba(255, 255, 255, 0.86);
+}
+
+.language-button {
+  width: auto;
+  min-width: 72px;
+  padding: 0 12px;
+}
+
+.language-button span {
+  font-size: 0.82rem;
+  font-weight: 950;
 }
 
 .icon-button.hot {

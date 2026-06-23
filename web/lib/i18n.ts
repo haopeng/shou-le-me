@@ -3,7 +3,6 @@ import type { Language } from "./types";
 export const copy = {
   en: {
     appName: "Slim Yet?",
-    cnName: "瘦了么",
     tagline: "Group progress. Private baselines.",
     signIn: "Sign in",
     signUp: "Create account",
@@ -109,8 +108,7 @@ export const copy = {
     highlightConsistency: "Logged days"
   },
   zh: {
-    appName: "Slim Yet?",
-    cnName: "瘦了么",
+    appName: "瘦了么",
     tagline: "一起瘦，底重保密。",
     signIn: "登录",
     signUp: "注册",
