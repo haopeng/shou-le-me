@@ -27,7 +27,9 @@ import {
   Trophy,
   UserRound,
   Users,
-  Weight
+  Weight,
+  X,
+  ZoomIn
 } from "lucide-react";
 import Image from "next/image";
 import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
@@ -900,11 +902,13 @@ function feedSentence(item: FeedItem, unit: WeightUnit, language: Language) {
 function MemberTrendBoard({
   dashboard,
   unit,
-  language
+  language,
+  onMemberSelect
 }: {
   dashboard: GroupDashboard;
   unit: WeightUnit;
   language: Language;
+  onMemberSelect: (member: GroupDashboard["members"][number]) => void;
 }) {
   const t = copy[language];
 
@@ -932,6 +936,15 @@ function MemberTrendBoard({
             <article
               className={classNames("trend-card", winner && "winner", member.isMe && "me")}
               key={member.memberId}
+              onClick={() => onMemberSelect(member)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  onMemberSelect(member);
+                }
+              }}
+              role="button"
+              tabIndex={0}
             >
               <div className="trend-card-head">
                 <Avatar name={member.displayName} url={member.avatarUrl} />
@@ -1056,6 +1069,138 @@ function Avatar({ name, url }: { name: string; url: string | null }) {
   }
 
   return <div className="avatar fallback-avatar">{initials(name) || "SY"}</div>;
+}
+
+function MemberProfileModal({
+  member,
+  unit,
+  language,
+  onClose
+}: {
+  member: GroupDashboard["members"][number];
+  unit: WeightUnit;
+  language: Language;
+  onClose: () => void;
+}) {
+  const t = copy[language];
+  const [zoomed, setZoomed] = useState(false);
+  const displayDelta = member.deltaKg === null ? null : toDisplayWeight(member.deltaKg, unit);
+  const joinedDate = new Date(member.joinedAt).toLocaleDateString(
+    language === "zh" ? "zh-CN" : "en-US",
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    }
+  );
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="member-modal-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <section
+        aria-labelledby="member-profile-title"
+        aria-modal="true"
+        className="member-modal"
+        role="dialog"
+      >
+        <button
+          aria-label={t.close}
+          className="icon-button ghost member-modal-close"
+          onClick={onClose}
+          type="button"
+        >
+          <X size={18} />
+        </button>
+
+        <div className="member-modal-head">
+          <button
+            aria-label={t.zoomPhoto}
+            className={classNames("member-photo-button", zoomed && "zoomed")}
+            onClick={() => setZoomed((current) => !current)}
+            type="button"
+          >
+            {member.avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img alt={member.displayName} src={member.avatarUrl} />
+            ) : (
+              <span>{initials(member.displayName) || "SY"}</span>
+            )}
+            <i>
+              <ZoomIn size={15} />
+            </i>
+          </button>
+
+          <div>
+            <p className="eyebrow">{t.publicGroupProfile}</p>
+            <h2 id="member-profile-title">{member.displayName}</h2>
+            <div className="hero-meta member-profile-meta">
+              {member.isMe && <span>{t.you}</span>}
+              <span>{member.role === "owner" ? t.owner : t.member}</span>
+              <span>
+                <Lock size={15} />
+                {t.privateBase}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="member-stats-grid">
+          <div>
+            <span>{t.delta}</span>
+            <strong className={displayDelta !== null && displayDelta <= 0 ? "good" : "warm"}>
+              {displayDelta === null ? "--" : `${formatNumber(displayDelta)} ${t[unit]}`}
+            </strong>
+          </div>
+          <div>
+            <span>{t.rank}</span>
+            <strong>{member.rank ? `#${member.rank}` : "--"}</strong>
+          </div>
+          <div>
+            <span>{t.loggedDays}</span>
+            <strong>{member.daysLogged}</strong>
+          </div>
+          <div>
+            <span>{t.latestLog}</span>
+            <strong>{member.latestDate ?? "--"}</strong>
+          </div>
+          <div>
+            <span>{t.joinedOn}</span>
+            <strong>{joinedDate}</strong>
+          </div>
+        </div>
+
+        <div className="highlight-list member-modal-highlights">
+          {member.badges.map((badge) => (
+            <span className="steady" key={badge}>
+              {badge in t ? t[badge as keyof typeof t] : badge.replace(/^badge/, "")}
+            </span>
+          ))}
+          {member.highlights.map((highlight, index) => (
+            <span className={highlight.tone} key={`${highlight.kind}-${index}`}>
+              {highlightText(highlight, unit, language)}
+            </span>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
 }
 
 type LocalLog = {
@@ -2136,7 +2281,12 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
             </div>
           </section>
 
-          <MemberTrendBoard dashboard={dashboard} unit={unit} language={language} />
+          <MemberTrendBoard
+            dashboard={dashboard}
+            language={language}
+            onMemberSelect={() => undefined}
+            unit={unit}
+          />
 
           <section className="action-row">
             <form className="action-panel" onSubmit={handleBase}>
@@ -2329,6 +2479,7 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
           </div>
         </section>
       </div>
+
     </main>
   );
 }
@@ -2351,6 +2502,9 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   const [dashboard, setDashboard] = useState<GroupDashboard | null>(null);
   const [personalDashboard, setPersonalDashboard] = useState<PersonalDashboard | null>(null);
   const [activeView, setActiveView] = useState<ActiveView>("personal");
+  const [selectedMember, setSelectedMember] = useState<GroupDashboard["members"][number] | null>(
+    null
+  );
   const [profileForm, setProfileForm] = useState({
     fullName: "",
     nickname: "",
@@ -2507,11 +2661,13 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   }
 
   function showPersonalView(replace = false) {
+    setSelectedMember(null);
     setActiveView("personal");
     writeSelectionUrl({ language, view: "me", replace });
   }
 
   function showGroupView(group: Pick<GroupSummary, "id" | "inviteCode">, replace = false) {
+    setSelectedMember(null);
     setSelectedGroupId(group.id);
     setActiveView("group");
     writeSelectionUrl({ language, inviteCode: group.inviteCode, replace });
@@ -2550,6 +2706,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
 
     function syncSelectionFromUrl() {
       const urlGroup = findGroupFromUrl(groups);
+      setSelectedMember(null);
       if (urlGroup) {
         setSelectedGroupId(urlGroup.id);
         setActiveView("group");
@@ -3283,7 +3440,12 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                 </div>
               </section>
 
-              <MemberTrendBoard dashboard={dashboard} unit={unit} language={language} />
+              <MemberTrendBoard
+                dashboard={dashboard}
+                language={language}
+                onMemberSelect={setSelectedMember}
+                unit={unit}
+              />
 
               <section className="action-row">
                 <form className="action-panel" onSubmit={handleBase}>
@@ -3354,6 +3516,15 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                         <article
                           className={classNames("leader-row", winner && "winner", member.isMe && "me")}
                           key={member.memberId}
+                          onClick={() => setSelectedMember(member)}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter" || event.key === " ") {
+                              event.preventDefault();
+                              setSelectedMember(member);
+                            }
+                          }}
+                          role="button"
+                          tabIndex={0}
                         >
                           <div className="rank-cell">{member.rank ?? "-"}</div>
                           <Avatar name={member.displayName} url={member.avatarUrl} />
@@ -3454,6 +3625,15 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
           )}
         </section>
       </div>
+
+      {selectedMember && (
+        <MemberProfileModal
+          language={language}
+          member={selectedMember}
+          onClose={() => setSelectedMember(null)}
+          unit={unit}
+        />
+      )}
     </main>
   );
 }
