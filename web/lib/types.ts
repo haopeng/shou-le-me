@@ -103,6 +103,13 @@ export type PersonalDashboard = {
   highlights: PersonalHighlight[];
 };
 
+export type ReactionUser = {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isMe: boolean;
+};
+
 export type FeedItem = {
   id: string;
   actorUserId: string;
@@ -115,6 +122,7 @@ export type FeedItem = {
   newDeltaKg: number | null;
   createdAt: string;
   reactionCounts: Record<ReactionType, number>;
+  reactionUsers?: Record<ReactionType, ReactionUser[]>;
   myReaction: ReactionType | null;
 };
 

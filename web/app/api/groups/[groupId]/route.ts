@@ -63,6 +63,13 @@ type ReactionRow = {
   reaction: ReactionType;
 };
 
+type ReactionUser = {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  isMe: boolean;
+};
+
 type MemberHighlight = {
   kind:
     | "base_needed"
@@ -258,6 +265,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
   const memberRows = (members ?? []) as MemberRow[];
   const userIds = memberRows.map((member) => member.user_id);
+  const membersByUserId = new Map(memberRows.map((member) => [member.user_id, member]));
 
   const profilesById = new Map<string, ProfileRow>();
 
@@ -429,13 +437,41 @@ export async function GET(request: NextRequest, context: RouteContext) {
       (counts, reaction) => ({ ...counts, [reaction]: 0 }),
       {} as Record<ReactionType, number>
     );
+    const reactionUsers = reactionTypes.reduce(
+      (users, reaction) => ({ ...users, [reaction]: [] }),
+      {} as Record<ReactionType, ReactionUser[]>
+    );
     let myReaction: ReactionType | null = null;
 
     for (const reaction of reactionsByFeed.get(item.id) ?? []) {
+      const reactingMember = membersByUserId.get(reaction.user_id);
+      const reactingProfile = profilesById.get(reaction.user_id);
+
       reactionCounts[reaction.reaction] += 1;
+      reactionUsers[reaction.reaction].push({
+        userId: reaction.user_id,
+        displayName: reactingMember
+          ? displayNameFor(reactingMember, reactingProfile)
+          : reactingProfile?.nickname ||
+            reactingProfile?.full_name ||
+            reactingProfile?.email?.split("@")[0] ||
+            "Member",
+        avatarUrl: reactingProfile?.avatar_url ?? null,
+        isMe: reaction.user_id === auth.user.id
+      });
+
       if (reaction.user_id === auth.user.id) {
         myReaction = reaction.reaction;
       }
+    }
+
+    for (const reaction of reactionTypes) {
+      reactionUsers[reaction].sort((left, right) => {
+        if (left.isMe !== right.isMe) {
+          return left.isMe ? -1 : 1;
+        }
+        return left.displayName.localeCompare(right.displayName);
+      });
     }
 
     return {
@@ -451,6 +487,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       newDeltaKg: numberOrNull(item.new_delta_kg),
       createdAt: item.created_at,
       reactionCounts,
+      reactionUsers,
       myReaction
     };
   });

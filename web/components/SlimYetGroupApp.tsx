@@ -46,6 +46,7 @@ import type {
   PersonalDashboard,
   Profile,
   ReactionType,
+  ReactionUser,
   WeightUnit
 } from "@/lib/types";
 
@@ -70,6 +71,7 @@ type SupabaseAuthSettings = {
 };
 
 const KG_PER_LB = 0.45359237;
+const reactionTypes: ReactionType[] = ["like", "heart", "care", "thumbs_down"];
 
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
@@ -1007,6 +1009,20 @@ function MemberTrendBoard({
   );
 }
 
+function reactionNamesText(users: ReactionUser[], language: Language) {
+  const names = users.map((user) => user.displayName);
+
+  if (names.length <= 4) {
+    return language === "zh" ? names.join("、") : names.join(", ");
+  }
+
+  const visible = names.slice(0, 3);
+  const remaining = names.length - visible.length;
+  return language === "zh"
+    ? `${visible.join("、")} 等 ${names.length} 人`
+    : `${visible.join(", ")} +${remaining}`;
+}
+
 function FeedPanel({
   dashboard,
   unit,
@@ -1035,43 +1051,77 @@ function FeedPanel({
       </div>
       <div className="feed-list">
         {dashboard.feed.length ? (
-          dashboard.feed.map((item) => (
-            <article className="feed-item" key={item.id}>
-              <Avatar name={item.actorName} url={item.actorAvatarUrl} />
-              <div className="feed-main">
-                <p>{feedSentence(item, unit, language)}</p>
-                <time dateTime={item.createdAt}>
-                  {new Date(item.createdAt).toLocaleString(language === "zh" ? "zh-CN" : "en-US", {
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit"
-                  })}
-                </time>
-                <div className="reaction-row" aria-label={t.feedReactionHint}>
-                  <span className="reaction-hint">{t.feedReactionHint}</span>
-                  {reactionMeta.map(({ emoji, label, type: reaction }) => (
-                    <button
-                      className={classNames(
-                        "reaction-button",
-                        item.myReaction === reaction && "active"
-                      )}
-                      disabled={busy === `react-${item.id}-${reaction}`}
-                      key={reaction}
-                      onClick={() => onReact(item.id, reaction)}
-                      title={label}
-                      type="button"
-                    >
-                      <span className="reaction-emoji" aria-hidden="true">
-                        {emoji}
-                      </span>
-                      <span>{item.reactionCounts[reaction]}</span>
-                    </button>
-                  ))}
+          dashboard.feed.map((item) => {
+            const reactionPeople = reactionMeta
+              .map(({ emoji, label, type }) => {
+                const users =
+                  item.reactionUsers?.[type]?.map((user) => ({
+                    ...user,
+                    displayName: user.isMe ? t.you : user.displayName
+                  })) ?? [];
+
+                return {
+                  emoji,
+                  label,
+                  type,
+                  users,
+                  names: reactionNamesText(users, language)
+                };
+              })
+              .filter((reaction) => reaction.users.length > 0);
+
+            return (
+              <article className="feed-item" key={item.id}>
+                <Avatar name={item.actorName} url={item.actorAvatarUrl} />
+                <div className="feed-main">
+                  <p>{feedSentence(item, unit, language)}</p>
+                  <time dateTime={item.createdAt}>
+                    {new Date(item.createdAt).toLocaleString(language === "zh" ? "zh-CN" : "en-US", {
+                      month: "short",
+                      day: "numeric",
+                      hour: "numeric",
+                      minute: "2-digit"
+                    })}
+                  </time>
+                  <div className="reaction-row" aria-label={t.feedReactionHint}>
+                    <span className="reaction-hint">{t.feedReactionHint}</span>
+                    {reactionMeta.map(({ emoji, label, type: reaction }) => (
+                      <button
+                        className={classNames(
+                          "reaction-button",
+                          item.myReaction === reaction && "active"
+                        )}
+                        disabled={busy === `react-${item.id}-${reaction}`}
+                        key={reaction}
+                        onClick={() => onReact(item.id, reaction)}
+                        title={label}
+                        type="button"
+                      >
+                        <span className="reaction-emoji" aria-hidden="true">
+                          {emoji}
+                        </span>
+                        <span>{item.reactionCounts[reaction]}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {reactionPeople.length > 0 ? (
+                    <div className="reaction-people-list">
+                      {reactionPeople.map(({ emoji, label, names, type, users }) => (
+                        <span
+                          className="reaction-people"
+                          key={type}
+                          title={`${label}: ${users.map((user) => user.displayName).join(", ")}`}
+                        >
+                          <span aria-hidden="true">{emoji}</span>
+                          <span>{names}</span>
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
-              </div>
-            </article>
-          ))
+              </article>
+            );
+          })
         ) : (
           <div className="empty-state">{t.noFeed}</div>
         )}
@@ -1352,6 +1402,22 @@ function sampleLocalState(language: Language): LocalPreviewState {
             newDeltaKg: -0.8,
             createdAt: "2026-06-22T19:20:00.000Z",
             reactionCounts: { like: 2, heart: 1, care: 0, thumbs_down: 0 },
+            reactionUsers: {
+              like: [
+                { userId: "local-jay", displayName: "Jay", avatarUrl: null, isMe: false },
+                { userId: "local-amy", displayName: "Amy", avatarUrl: null, isMe: false }
+              ],
+              heart: [
+                {
+                  userId: localMeId,
+                  displayName: language === "zh" ? "我" : "Me",
+                  avatarUrl: null,
+                  isMe: true
+                }
+              ],
+              care: [],
+              thumbs_down: []
+            },
             myReaction: "heart"
           },
           {
@@ -1365,7 +1431,13 @@ function sampleLocalState(language: Language): LocalPreviewState {
             previousDeltaKg: -0.6,
             newDeltaKg: -1.2,
             createdAt: "2026-06-22T07:45:00.000Z",
-            reactionCounts: { like: 1, heart: 1, care: 1, thumbs_down: 0 },
+            reactionCounts: { like: 1, heart: 1, care: 0, thumbs_down: 0 },
+            reactionUsers: {
+              like: [{ userId: "local-amy", displayName: "Amy", avatarUrl: null, isMe: false }],
+              heart: [{ userId: "local-jay", displayName: "Jay", avatarUrl: null, isMe: false }],
+              care: [],
+              thumbs_down: []
+            },
             myReaction: null
           }
         ]
@@ -1541,20 +1613,40 @@ function buildLocalDashboard(state: LocalPreviewState, language: Language): Grou
         note: log.note,
         deltaKg: me.baseWeightKg !== null ? roundOne(log.weightKg - me.baseWeightKg) : null
       })),
-    feed: group.feed.map((item) =>
-      item.actorUserId === localMeId
+    feed: group.feed.map((item) => {
+      const reactionUsers = localReactionUsers();
+
+      for (const reaction of reactionTypes) {
+        reactionUsers[reaction] = (item.reactionUsers?.[reaction] ?? []).map((user) =>
+          user.userId === localMeId
+            ? {
+                ...user,
+                displayName: state.nickname || copy[language].you,
+                avatarUrl: state.avatarUrl,
+                isMe: true
+              }
+            : user
+        );
+      }
+
+      return item.actorUserId === localMeId
         ? {
             ...item,
             actorName: state.nickname || copy[language].you,
-            actorAvatarUrl: state.avatarUrl
+            actorAvatarUrl: state.avatarUrl,
+            reactionUsers
           }
-        : item
-    )
+        : { ...item, reactionUsers };
+    })
   };
 }
 
 function localReactionCounts(): Record<ReactionType, number> {
   return { like: 0, heart: 0, care: 0, thumbs_down: 0 };
+}
+
+function localReactionUsers(): Record<ReactionType, ReactionUser[]> {
+  return { like: [], heart: [], care: [], thumbs_down: [] };
 }
 
 function sortedLogs(logs: LocalLog[]) {
@@ -1931,6 +2023,7 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
           newDeltaKg: 0,
           createdAt: new Date().toISOString(),
           reactionCounts: localReactionCounts(),
+          reactionUsers: localReactionUsers(),
           myReaction: null
         };
 
@@ -2003,6 +2096,7 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
           newDeltaKg,
           createdAt: new Date().toISOString(),
           reactionCounts: localReactionCounts(),
+          reactionUsers: localReactionUsers(),
           myReaction: null
         };
 
@@ -2056,12 +2150,28 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
               reactionCounts[item.myReaction] = Math.max(0, reactionCounts[item.myReaction] - 1);
             }
 
+            const reactionUsers = localReactionUsers();
+            for (const type of reactionTypes) {
+              reactionUsers[type] = (item.reactionUsers?.[type] ?? []).filter(
+                (user) => user.userId !== localMeId
+              );
+            }
+
             const myReaction = item.myReaction === reaction ? null : reaction;
             if (myReaction) {
               reactionCounts[myReaction] += 1;
+              reactionUsers[myReaction] = [
+                {
+                  userId: localMeId,
+                  displayName: current.nickname || copy[language].you,
+                  avatarUrl: current.avatarUrl,
+                  isMe: true
+                },
+                ...reactionUsers[myReaction]
+              ];
             }
 
-            return { ...item, reactionCounts, myReaction };
+            return { ...item, reactionCounts, reactionUsers, myReaction };
           })
         };
       })
