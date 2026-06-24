@@ -1479,6 +1479,14 @@ label span {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .workspace {
+    order: -1;
+  }
+
+  .side-rail {
+    order: 1;
+  }
+
   .action-panel:last-child {
     grid-column: 1 / -1;
   }
