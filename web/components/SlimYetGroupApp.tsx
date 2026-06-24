@@ -7,7 +7,6 @@ import {
   Clipboard,
   Flame,
   Gauge,
-  Heart,
   Image as ImageIcon,
   Languages,
   LineChart,
@@ -20,9 +19,6 @@ import {
   RefreshCcw,
   ShieldCheck,
   Sparkles,
-  Smile,
-  ThumbsDown,
-  ThumbsUp,
   Trash2,
   Trophy,
   UserRound,
@@ -32,7 +28,7 @@ import {
   ZoomIn
 } from "lucide-react";
 import Image from "next/image";
-import { type ChangeEvent, type FormEvent, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   copy,
@@ -1025,18 +1021,11 @@ function FeedPanel({
   busy: string | null;
 }) {
   const t = copy[language];
-  const reactionMeta: Record<
-    ReactionType,
-    {
-      label: string;
-      icon: ReactNode;
-    }
-  > = {
-    like: { label: t.reactionLike, icon: <ThumbsUp size={15} /> },
-    heart: { label: t.reactionHeart, icon: <Heart size={15} /> },
-    care: { label: t.reactionCare, icon: <Smile size={15} /> },
-    thumbs_down: { label: t.reactionThumbsDown, icon: <ThumbsDown size={15} /> }
-  };
+  const reactionMeta: Array<{ type: ReactionType; label: string; emoji: string }> = [
+    { type: "like", label: t.reactionLike, emoji: "👍" },
+    { type: "heart", label: t.reactionHeart, emoji: "❤️" },
+    { type: "care", label: t.reactionCare, emoji: "👏" }
+  ];
 
   return (
     <section className="panel feed-panel">
@@ -1059,8 +1048,9 @@ function FeedPanel({
                     minute: "2-digit"
                   })}
                 </time>
-                <div className="reaction-row">
-                  {(Object.keys(reactionMeta) as ReactionType[]).map((reaction) => (
+                <div className="reaction-row" aria-label={t.feedReactionHint}>
+                  <span className="reaction-hint">{t.feedReactionHint}</span>
+                  {reactionMeta.map(({ emoji, label, type: reaction }) => (
                     <button
                       className={classNames(
                         "reaction-button",
@@ -1069,10 +1059,12 @@ function FeedPanel({
                       disabled={busy === `react-${item.id}-${reaction}`}
                       key={reaction}
                       onClick={() => onReact(item.id, reaction)}
-                      title={reactionMeta[reaction].label}
+                      title={label}
                       type="button"
                     >
-                      {reactionMeta[reaction].icon}
+                      <span className="reaction-emoji" aria-hidden="true">
+                        {emoji}
+                      </span>
                       <span>{item.reactionCounts[reaction]}</span>
                     </button>
                   ))}

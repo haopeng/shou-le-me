@@ -1522,29 +1522,55 @@ label span {
 .reaction-row {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
-  margin-top: 9px;
+  margin-top: 10px;
+}
+
+.reaction-hint {
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 820;
+  margin-right: 2px;
 }
 
 .reaction-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  min-width: 46px;
-  min-height: 30px;
-  border: 1px solid rgba(31, 41, 51, 0.08);
+  gap: 6px;
+  min-width: 56px;
+  min-height: 34px;
+  border: 1px solid rgba(31, 41, 51, 0.1);
   border-radius: 999px;
-  color: var(--muted);
-  background: rgba(255, 255, 255, 0.8);
-  font-size: 0.76rem;
-  font-weight: 850;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 7px 18px rgba(31, 41, 51, 0.05);
+  font-size: 0.78rem;
+  font-weight: 900;
+  transition:
+    transform 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.reaction-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  border-color: rgba(255, 86, 63, 0.24);
+  box-shadow: 0 10px 22px rgba(255, 86, 63, 0.1);
+}
+
+.reaction-emoji {
+  font-size: 1rem;
+  line-height: 1;
 }
 
 .reaction-button.active {
-  border-color: rgba(255, 86, 63, 0.22);
+  border-color: rgba(255, 86, 63, 0.3);
   color: var(--hot-deep);
-  background: rgba(255, 86, 63, 0.12);
+  background: linear-gradient(135deg, rgba(255, 86, 63, 0.16), rgba(255, 192, 91, 0.22));
+  box-shadow: 0 10px 24px rgba(255, 86, 63, 0.14);
 }
 
 .log-row {
