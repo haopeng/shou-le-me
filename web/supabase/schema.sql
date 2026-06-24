@@ -73,7 +73,7 @@ create table if not exists public.slim_feed_reactions (
   reaction text not null check (reaction in ('like', 'heart', 'care', 'thumbs_down')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (feed_item_id, user_id)
+  unique (feed_item_id, user_id, reaction)
 );
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

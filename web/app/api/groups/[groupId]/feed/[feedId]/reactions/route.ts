@@ -52,6 +52,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     .select("id,reaction")
     .eq("feed_item_id", feedId)
     .eq("user_id", auth.user.id)
+    .eq("reaction", reaction)
     .maybeSingle();
 
   if (existingError) {
@@ -68,22 +69,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return jsonError(deleteError.message, 500);
     }
 
-    return NextResponse.json({ ok: true, reaction: null });
+    return NextResponse.json({ ok: true, reaction, active: false });
   }
 
-  const { error: upsertError } = await auth.admin.from("slim_feed_reactions").upsert(
-    {
-      feed_item_id: feedId,
-      user_id: auth.user.id,
-      reaction,
-      updated_at: new Date().toISOString()
-    },
-    { onConflict: "feed_item_id,user_id" }
-  );
+  const { error: insertError } = await auth.admin.from("slim_feed_reactions").insert({
+    feed_item_id: feedId,
+    user_id: auth.user.id,
+    reaction,
+    updated_at: new Date().toISOString()
+  });
 
-  if (upsertError) {
-    return jsonError(upsertError.message, 500);
+  if (insertError) {
+    return jsonError(insertError.message, insertError.code === "23505" ? 409 : 500);
   }
 
-  return NextResponse.json({ ok: true, reaction });
+  return NextResponse.json({ ok: true, reaction, active: true });
 }

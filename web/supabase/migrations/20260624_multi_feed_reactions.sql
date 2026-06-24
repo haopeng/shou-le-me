@@ -1,0 +1,9 @@
+alter table public.slim_feed_reactions
+drop constraint if exists slim_feed_reactions_feed_item_id_user_id_key;
+
+alter table public.slim_feed_reactions
+drop constraint if exists slim_feed_reactions_feed_item_id_user_id_reaction_key;
+
+alter table public.slim_feed_reactions
+add constraint slim_feed_reactions_feed_item_id_user_id_reaction_key
+unique (feed_item_id, user_id, reaction);

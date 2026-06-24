@@ -1023,6 +1023,15 @@ function reactionNamesText(users: ReactionUser[], language: Language) {
     : `${visible.join(", ")} +${remaining}`;
 }
 
+function selectedReactionsFor(item: FeedItem) {
+  const selected = new Set(item.myReactions ?? []);
+  if (item.myReaction) {
+    selected.add(item.myReaction);
+  }
+
+  return reactionTypes.filter((reaction) => selected.has(reaction));
+}
+
 function FeedPanel({
   dashboard,
   unit,
@@ -1052,6 +1061,7 @@ function FeedPanel({
       <div className="feed-list">
         {dashboard.feed.length ? (
           dashboard.feed.map((item) => {
+            const selectedReactions = selectedReactionsFor(item);
             const reactionPeople = reactionMeta
               .map(({ emoji, label, type }) => {
                 const users =
@@ -1089,7 +1099,7 @@ function FeedPanel({
                       <button
                         className={classNames(
                           "reaction-button",
-                          item.myReaction === reaction && "active"
+                          selectedReactions.includes(reaction) && "active"
                         )}
                         disabled={busy === `react-${item.id}-${reaction}`}
                         key={reaction}
@@ -1418,6 +1428,7 @@ function sampleLocalState(language: Language): LocalPreviewState {
               care: [],
               thumbs_down: []
             },
+            myReactions: ["heart"],
             myReaction: "heart"
           },
           {
@@ -1438,6 +1449,7 @@ function sampleLocalState(language: Language): LocalPreviewState {
               care: [],
               thumbs_down: []
             },
+            myReactions: [],
             myReaction: null
           }
         ]
@@ -2024,6 +2036,7 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
           createdAt: new Date().toISOString(),
           reactionCounts: localReactionCounts(),
           reactionUsers: localReactionUsers(),
+          myReactions: [],
           myReaction: null
         };
 
@@ -2097,6 +2110,7 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
           createdAt: new Date().toISOString(),
           reactionCounts: localReactionCounts(),
           reactionUsers: localReactionUsers(),
+          myReactions: [],
           myReaction: null
         };
 
@@ -2146,32 +2160,42 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
             }
 
             const reactionCounts = { ...item.reactionCounts };
-            if (item.myReaction) {
-              reactionCounts[item.myReaction] = Math.max(0, reactionCounts[item.myReaction] - 1);
-            }
+            const selectedReactions = new Set(selectedReactionsFor(item));
+            const alreadySelected = selectedReactions.has(reaction);
 
             const reactionUsers = localReactionUsers();
             for (const type of reactionTypes) {
               reactionUsers[type] = (item.reactionUsers?.[type] ?? []).filter(
-                (user) => user.userId !== localMeId
+                (user) => type !== reaction || user.userId !== localMeId
               );
             }
 
-            const myReaction = item.myReaction === reaction ? null : reaction;
-            if (myReaction) {
-              reactionCounts[myReaction] += 1;
-              reactionUsers[myReaction] = [
+            if (alreadySelected) {
+              reactionCounts[reaction] = Math.max(0, reactionCounts[reaction] - 1);
+              selectedReactions.delete(reaction);
+            } else {
+              reactionCounts[reaction] += 1;
+              selectedReactions.add(reaction);
+              reactionUsers[reaction] = [
                 {
                   userId: localMeId,
                   displayName: current.nickname || copy[language].you,
                   avatarUrl: current.avatarUrl,
                   isMe: true
                 },
-                ...reactionUsers[myReaction]
+                ...reactionUsers[reaction]
               ];
             }
 
-            return { ...item, reactionCounts, reactionUsers, myReaction };
+            const myReactions = reactionTypes.filter((type) => selectedReactions.has(type));
+
+            return {
+              ...item,
+              reactionCounts,
+              reactionUsers,
+              myReactions,
+              myReaction: myReactions[0] ?? null
+            };
           })
         };
       })

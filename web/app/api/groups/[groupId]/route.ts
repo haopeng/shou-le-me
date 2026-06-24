@@ -441,7 +441,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       (users, reaction) => ({ ...users, [reaction]: [] }),
       {} as Record<ReactionType, ReactionUser[]>
     );
-    let myReaction: ReactionType | null = null;
+    const myReactions: ReactionType[] = [];
 
     for (const reaction of reactionsByFeed.get(item.id) ?? []) {
       const reactingMember = membersByUserId.get(reaction.user_id);
@@ -461,7 +461,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       });
 
       if (reaction.user_id === auth.user.id) {
-        myReaction = reaction.reaction;
+        myReactions.push(reaction.reaction);
       }
     }
 
@@ -473,6 +473,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
         return left.displayName.localeCompare(right.displayName);
       });
     }
+
+    const ownReactions = reactionTypes.filter((reaction) => myReactions.includes(reaction));
 
     return {
       id: item.id,
@@ -488,7 +490,8 @@ export async function GET(request: NextRequest, context: RouteContext) {
       createdAt: item.created_at,
       reactionCounts,
       reactionUsers,
-      myReaction
+      myReactions: ownReactions,
+      myReaction: ownReactions[0] ?? null
     };
   });
 

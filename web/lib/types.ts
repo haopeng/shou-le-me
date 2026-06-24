@@ -123,7 +123,8 @@ export type FeedItem = {
   createdAt: string;
   reactionCounts: Record<ReactionType, number>;
   reactionUsers?: Record<ReactionType, ReactionUser[]>;
-  myReaction: ReactionType | null;
+  myReactions?: ReactionType[];
+  myReaction?: ReactionType | null;
 };
 
 export type GroupDashboard = {
