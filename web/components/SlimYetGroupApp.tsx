@@ -113,6 +113,74 @@ function classNames(...parts: Array<string | false | null | undefined>) {
   return parts.filter(Boolean).join(" ");
 }
 
+function getUrlGroupToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const token = new URLSearchParams(window.location.search).get("group")?.trim();
+  return token || null;
+}
+
+function getUrlViewToken() {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  return new URLSearchParams(window.location.search).get("view");
+}
+
+function findGroupFromUrl(groups: GroupSummary[]) {
+  const token = getUrlGroupToken();
+  if (!token) {
+    return null;
+  }
+
+  const normalizedToken = token.toUpperCase();
+  return (
+    groups.find(
+      (group) => group.inviteCode.toUpperCase() === normalizedToken || group.id === token
+    ) ?? null
+  );
+}
+
+function writeSelectionUrl({
+  language,
+  inviteCode,
+  view,
+  replace = false
+}: {
+  language: Language;
+  inviteCode?: string;
+  view?: "me";
+  replace?: boolean;
+}) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const url = new URL(window.location.href);
+  url.pathname = "/";
+  url.searchParams.set("lang", language);
+
+  if (inviteCode) {
+    url.searchParams.set("group", inviteCode);
+    url.searchParams.delete("view");
+  } else if (view === "me") {
+    url.searchParams.set("view", "me");
+    url.searchParams.delete("group");
+  }
+
+  const nextUrl = `${url.pathname}${url.search}${url.hash}`;
+  const currentUrl = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (nextUrl === currentUrl) {
+    return;
+  }
+
+  const method = replace ? "replaceState" : "pushState";
+  window.history[method](window.history.state, "", nextUrl);
+}
+
 function SharedTrendChart({
   dashboard,
   unit,
@@ -2408,8 +2476,19 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     }
 
     const groupsPayload = await apiFetch<{ groups: GroupSummary[] }>("/api/groups");
+    const urlGroup = findGroupFromUrl(groupsPayload.groups);
     setGroups(groupsPayload.groups);
+
+    if (urlGroup) {
+      setSelectedGroupId(urlGroup.id);
+      setActiveView("group");
+      return;
+    }
+
     setSelectedGroupId((current) => current ?? groupsPayload.groups[0]?.id ?? null);
+    if (getUrlViewToken() === "me") {
+      setActiveView("personal");
+    }
   }
 
   async function loadPersonalDashboard() {
@@ -2425,6 +2504,17 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
 
     const payload = await apiFetch<GroupDashboard>(`/api/groups/${groupId}`);
     setDashboard(payload);
+  }
+
+  function showPersonalView(replace = false) {
+    setActiveView("personal");
+    writeSelectionUrl({ language, view: "me", replace });
+  }
+
+  function showGroupView(group: Pick<GroupSummary, "id" | "inviteCode">, replace = false) {
+    setSelectedGroupId(group.id);
+    setActiveView("group");
+    writeSelectionUrl({ language, inviteCode: group.inviteCode, replace });
   }
 
   useEffect(() => {
@@ -2454,18 +2544,39 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   }, [selectedGroupId, session?.access_token]);
 
   useEffect(() => {
+    if (!session) {
+      return;
+    }
+
+    function syncSelectionFromUrl() {
+      const urlGroup = findGroupFromUrl(groups);
+      if (urlGroup) {
+        setSelectedGroupId(urlGroup.id);
+        setActiveView("group");
+        return;
+      }
+
+      if (getUrlViewToken() === "me" || !getUrlGroupToken()) {
+        setActiveView("personal");
+      }
+    }
+
+    window.addEventListener("popstate", syncSelectionFromUrl);
+    return () => window.removeEventListener("popstate", syncSelectionFromUrl);
+  }, [groups, session]);
+
+  useEffect(() => {
     if (!inviteCode || !session || handledInvite === inviteCode) {
       return;
     }
 
     setHandledInvite(inviteCode);
     run("join", async () => {
-      const payload = await apiFetch<{ groupId: string }>("/api/groups/join", {
+      const payload = await apiFetch<{ groupId: string; inviteCode: string }>("/api/groups/join", {
         method: "POST",
         body: JSON.stringify({ inviteCode })
       });
-      setSelectedGroupId(payload.groupId);
-      setActiveView("group");
+      showGroupView({ id: payload.groupId, inviteCode: payload.inviteCode }, true);
       await loadMeAndGroups();
       await loadDashboard(payload.groupId);
       setMessage(t.joined);
@@ -2624,8 +2735,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
         body: JSON.stringify(groupForm)
       });
       setGroupForm({ name: "", description: "" });
-      setSelectedGroupId(payload.group.id);
-      setActiveView("group");
+      showGroupView(payload.group);
       await loadMeAndGroups();
       await loadDashboard(payload.group.id);
     });
@@ -2634,12 +2744,11 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   async function handleJoinGroup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await run("join", async () => {
-      const payload = await apiFetch<{ groupId: string }>("/api/groups/join", {
+      const payload = await apiFetch<{ groupId: string; inviteCode: string }>("/api/groups/join", {
         method: "POST",
         body: JSON.stringify({ inviteCode: joinCode })
       });
-      setSelectedGroupId(payload.groupId);
-      setActiveView("group");
+      showGroupView({ id: payload.groupId, inviteCode: payload.inviteCode });
       await loadMeAndGroups();
       await loadDashboard(payload.groupId);
     });
@@ -3066,7 +3175,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
             <button
               type="button"
               className={activeView === "personal" ? "active personal-tab" : "personal-tab"}
-              onClick={() => setActiveView("personal")}
+              onClick={() => showPersonalView()}
             >
               <span>
                 <Lock size={15} />
@@ -3080,10 +3189,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                   type="button"
                   className={activeView === "group" && group.id === selectedGroupId ? "active" : ""}
                   key={group.id}
-                  onClick={() => {
-                    setSelectedGroupId(group.id);
-                    setActiveView("group");
-                  }}
+                  onClick={() => showGroupView(group)}
                 >
                   <span>{group.name}</span>
                   <small>
