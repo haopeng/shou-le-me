@@ -192,7 +192,7 @@ function SharedTrendChart({
   unit: WeightUnit;
   language: Language;
 }) {
-  const plottedMembers = dashboard.members.filter((member) => member.sparkline.length >= 2);
+  const plottedMembers = dashboard.members.filter((member) => member.sparkline.length >= 1);
 
   if (!plottedMembers.length) {
     return <div className="trend-empty-line">{copy[language].noTrend}</div>;
@@ -252,18 +252,30 @@ function SharedTrendChart({
             })
             .join(" ");
           const latest = sortedPoints.at(-1)!;
+          const first = sortedPoints[0];
+          const isSinglePoint = sortedPoints.length === 1;
 
           return (
             <g key={member.memberId}>
-              <path
-                d={path}
-                className={classNames("shared-trend-path", member.rank === 1 && "winner")}
-                style={{ stroke: color }}
-              />
+              {isSinglePoint ? (
+                <path
+                  d={`M ${padLeft} ${yFor(first.deltaKg).toFixed(2)} L ${width - padRight} ${yFor(
+                    first.deltaKg
+                  ).toFixed(2)}`}
+                  className="shared-trend-single-guide"
+                  style={{ stroke: color }}
+                />
+              ) : (
+                <path
+                  d={path}
+                  className={classNames("shared-trend-path", member.rank === 1 && "winner")}
+                  style={{ stroke: color }}
+                />
+              )}
               <circle
                 cx={xFor(latest.date)}
                 cy={yFor(latest.deltaKg)}
-                r={member.rank === 1 ? 7 : 5}
+                r={isSinglePoint ? 8 : member.rank === 1 ? 7 : 5}
                 className="shared-trend-dot"
                 style={{ fill: color }}
               />
@@ -309,6 +321,33 @@ function SharedTrendChart({
   );
 }
 
+function buildWeightChartGeometry(values: number[], width: number, height: number, padX: number, padY: number) {
+  const low = Math.min(...values);
+  const high = Math.max(...values);
+  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const range = Math.max(1, high - low);
+  const yFor = (value: number) =>
+    height - padY - ((value - low) / range) * (height - padY * 2);
+  const xFor = (index: number) =>
+    values.length === 1
+      ? width / 2
+      : padX + (index / Math.max(1, values.length - 1)) * (width - padX * 2);
+  const path = values
+    .map((value, index) => {
+      const command = index === 0 ? "M" : "L";
+      return `${command} ${xFor(index).toFixed(2)} ${yFor(value).toFixed(2)}`;
+    })
+    .join(" ");
+  const fillPath =
+    values.length === 1
+      ? ""
+      : `${path} L ${xFor(values.length - 1).toFixed(2)} ${height - padY} L ${padX} ${
+          height - padY
+        } Z`;
+
+  return { low, high, average, yFor, xFor, path, fillPath };
+}
+
 function OwnWeightChart({
   dashboard,
   unit,
@@ -321,7 +360,7 @@ function OwnWeightChart({
   const t = copy[language];
   const logs = dashboard.ownLogs;
 
-  if (logs.length < 2) {
+  if (!logs.length) {
     return (
       <section className="panel own-chart-panel">
         <div className="panel-title">
@@ -338,26 +377,14 @@ function OwnWeightChart({
   const padX = 26;
   const padY = 30;
   const values = logs.map((log) => toDisplayWeight(log.weightKg, unit));
-  const low = Math.min(...values);
-  const high = Math.max(...values);
-  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const { low, high, average, yFor, xFor, path, fillPath } = buildWeightChartGeometry(
+    values,
+    width,
+    height,
+    padX,
+    padY
+  );
   const last = values.at(-1)!;
-  const range = Math.max(1, high - low);
-  const yFor = (value: number) =>
-    height - padY - ((value - low) / range) * (height - padY * 2);
-  const xFor = (index: number) =>
-    padX + (index / Math.max(1, logs.length - 1)) * (width - padX * 2);
-
-  const path = values
-    .map((value, index) => {
-      const command = index === 0 ? "M" : "L";
-      return `${command} ${xFor(index).toFixed(2)} ${yFor(value).toFixed(2)}`;
-    })
-    .join(" ");
-
-  const fillPath = `${path} L ${xFor(values.length - 1).toFixed(2)} ${height - padY} L ${padX} ${
-    height - padY
-  } Z`;
   const lowIndex = values.indexOf(low);
   const belowAverage = last < average;
   const latestDelta = dashboard.ownLogs.at(-1)?.deltaKg ?? null;
@@ -403,14 +430,21 @@ function OwnWeightChart({
             <stop offset="100%" stopColor="#ff7a48" stopOpacity="0.02" />
           </linearGradient>
         </defs>
-        <path className="own-chart-fill" d={fillPath} />
+        {fillPath && <path className="own-chart-fill" d={fillPath} />}
         <path
           className="own-chart-average"
           d={`M ${padX} ${yFor(average).toFixed(2)} L ${width - padX} ${yFor(average).toFixed(
             2
           )}`}
         />
-        <path className="own-chart-path" d={path} />
+        {values.length > 1 ? (
+          <path className="own-chart-path" d={path} />
+        ) : (
+          <path
+            className="own-chart-single-guide"
+            d={`M ${padX} ${yFor(last).toFixed(2)} L ${width - padX} ${yFor(last).toFixed(2)}`}
+          />
+        )}
         <circle className="own-chart-low" cx={xFor(lowIndex)} cy={yFor(low)} r="6" />
         <circle
           className="own-chart-last"
@@ -471,7 +505,7 @@ function PersonalWeightChart({
   const t = copy[language];
   const logs = dashboard.logs;
 
-  if (logs.length < 2) {
+  if (!logs.length) {
     return (
       <section className="panel own-chart-panel">
         <div className="panel-title">
@@ -488,24 +522,14 @@ function PersonalWeightChart({
   const padX = 30;
   const padY = 32;
   const values = logs.map((log) => toDisplayWeight(log.weightKg, unit));
-  const low = Math.min(...values);
-  const high = Math.max(...values);
-  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const { low, high, average, yFor, xFor, path, fillPath } = buildWeightChartGeometry(
+    values,
+    width,
+    height,
+    padX,
+    padY
+  );
   const last = values.at(-1)!;
-  const range = Math.max(1, high - low);
-  const yFor = (value: number) =>
-    height - padY - ((value - low) / range) * (height - padY * 2);
-  const xFor = (index: number) =>
-    padX + (index / Math.max(1, logs.length - 1)) * (width - padX * 2);
-  const path = values
-    .map((value, index) => {
-      const command = index === 0 ? "M" : "L";
-      return `${command} ${xFor(index).toFixed(2)} ${yFor(value).toFixed(2)}`;
-    })
-    .join(" ");
-  const fillPath = `${path} L ${xFor(values.length - 1).toFixed(2)} ${height - padY} L ${padX} ${
-    height - padY
-  } Z`;
   const lowIndex = values.indexOf(low);
   const belowAverage = last < average;
 
@@ -548,14 +572,21 @@ function PersonalWeightChart({
             <stop offset="100%" stopColor="#ff7a48" stopOpacity="0.02" />
           </linearGradient>
         </defs>
-        <path className="own-chart-fill personal-fill" d={fillPath} />
+        {fillPath && <path className="own-chart-fill personal-fill" d={fillPath} />}
         <path
           className="own-chart-average"
           d={`M ${padX} ${yFor(average).toFixed(2)} L ${width - padX} ${yFor(average).toFixed(
             2
           )}`}
         />
-        <path className="own-chart-path" d={path} />
+        {values.length > 1 ? (
+          <path className="own-chart-path" d={path} />
+        ) : (
+          <path
+            className="own-chart-single-guide"
+            d={`M ${padX} ${yFor(last).toFixed(2)} L ${width - padX} ${yFor(last).toFixed(2)}`}
+          />
+        )}
         <circle className="own-chart-low" cx={xFor(lowIndex)} cy={yFor(low)} r="6" />
         <circle className="own-chart-last" cx={xFor(values.length - 1)} cy={yFor(last)} r="7" />
         <text x={padX} y={22} className="chart-label">

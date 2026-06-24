@@ -934,6 +934,14 @@ label span {
   stroke-width: 6;
 }
 
+.shared-trend-single-guide {
+  fill: none;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 4 9;
+  opacity: 0.45;
+}
+
 .shared-trend-dot {
   stroke: #fff;
   stroke-width: 4;
@@ -1443,6 +1451,14 @@ label span {
   stroke: rgba(112, 100, 255, 0.42);
   stroke-width: 2;
   stroke-dasharray: 7 8;
+}
+
+.own-chart-single-guide {
+  fill: none;
+  stroke: rgba(36, 198, 188, 0.38);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 5 9;
 }
 
 .own-chart-low {
