@@ -71,6 +71,38 @@ export type OwnLog = {
   deltaKg: number | null;
 };
 
+export type PersonalLog = {
+  id: string;
+  recordedOn: string;
+  weightKg: number;
+  note: string | null;
+};
+
+export type PersonalHighlight = {
+  kind: "personal_low" | "below_average" | "latest_move" | "consistency";
+  valueKg: number | null;
+  auxKg: number | null;
+  date: string | null;
+  count: number | null;
+  tone: "good" | "steady" | "warm";
+};
+
+export type PersonalDashboard = {
+  stats: {
+    latestWeightKg: number | null;
+    previousWeightKg: number | null;
+    changeFromFirstKg: number | null;
+    changeFromPreviousKg: number | null;
+    lowestWeightKg: number | null;
+    lowestDate: string | null;
+    average30Kg: number | null;
+    loggedDays: number;
+    lastLoggedOn: string | null;
+  };
+  logs: PersonalLog[];
+  highlights: PersonalHighlight[];
+};
+
 export type FeedItem = {
   id: string;
   actorUserId: string;

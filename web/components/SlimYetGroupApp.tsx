@@ -45,6 +45,7 @@ import type {
   GroupDashboard,
   GroupSummary,
   Language,
+  PersonalDashboard,
   Profile,
   ReactionType,
   WeightUnit
@@ -54,6 +55,14 @@ type AuthMode = "signin" | "signup" | "reset" | "recover";
 
 type SlimYetGroupAppProps = {
   inviteCode?: string;
+};
+
+type ActiveView = "personal" | "group";
+
+type LogFormState = {
+  weight: string;
+  date: string;
+  note: string;
 };
 
 type SupabaseAuthSettings = {
@@ -354,6 +363,375 @@ function formatDeltaText(deltaKg: number, unit: WeightUnit, language: Language) 
   const value = toDisplayWeight(deltaKg, unit);
   const sign = value > 0 ? "+" : "";
   return `${sign}${formatNumber(value)} ${copy[language][unit]}`;
+}
+
+function personalHighlightText(
+  highlight: PersonalDashboard["highlights"][number],
+  unit: WeightUnit,
+  language: Language
+) {
+  const t = copy[language];
+  const value = highlight.valueKg;
+
+  switch (highlight.kind) {
+    case "personal_low":
+      return `${t.personalLow}: ${formatNumber(toDisplayWeight(value ?? 0, unit))} ${t[unit]}`;
+    case "below_average":
+      return `${t.personalBelowAverage}: ${formatNumber(toDisplayWeight(value ?? 0, unit))} ${
+        t[unit]
+      }`;
+    case "latest_move":
+      return `${t.personalLatestMove}: ${formatDeltaText(value ?? 0, unit, language)}`;
+    case "consistency":
+      return `${t.highlightConsistency}: ${highlight.count ?? 0}`;
+    default:
+      return "";
+  }
+}
+
+function PersonalWeightChart({
+  dashboard,
+  unit,
+  language
+}: {
+  dashboard: PersonalDashboard;
+  unit: WeightUnit;
+  language: Language;
+}) {
+  const t = copy[language];
+  const logs = dashboard.logs;
+
+  if (logs.length < 2) {
+    return (
+      <section className="panel own-chart-panel">
+        <div className="panel-title">
+          <LineChart size={18} />
+          <span>{t.stream}</span>
+        </div>
+        <div className="empty-state">{t.noLogs}</div>
+      </section>
+    );
+  }
+
+  const width = 720;
+  const height = 250;
+  const padX = 30;
+  const padY = 32;
+  const values = logs.map((log) => toDisplayWeight(log.weightKg, unit));
+  const low = Math.min(...values);
+  const high = Math.max(...values);
+  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const last = values.at(-1)!;
+  const range = Math.max(1, high - low);
+  const yFor = (value: number) =>
+    height - padY - ((value - low) / range) * (height - padY * 2);
+  const xFor = (index: number) =>
+    padX + (index / Math.max(1, logs.length - 1)) * (width - padX * 2);
+  const path = values
+    .map((value, index) => {
+      const command = index === 0 ? "M" : "L";
+      return `${command} ${xFor(index).toFixed(2)} ${yFor(value).toFixed(2)}`;
+    })
+    .join(" ");
+  const fillPath = `${path} L ${xFor(values.length - 1).toFixed(2)} ${height - padY} L ${padX} ${
+    height - padY
+  } Z`;
+  const lowIndex = values.indexOf(low);
+  const belowAverage = last < average;
+
+  return (
+    <section className="panel own-chart-panel personal-chart-panel">
+      <div className="chart-heading">
+        <div>
+          <div className="panel-title">
+            <LineChart size={18} />
+            <span>{t.stream}</span>
+          </div>
+          <p className="micro-copy">
+            {belowAverage
+              ? t.personalBelowAverage
+              : language === "zh"
+                ? "继续记录，个人趋势会更清楚"
+                : "Keep logging to sharpen your private trend"}
+          </p>
+        </div>
+        <div className="chart-kpis">
+          <div>
+            <span>{t.average30}</span>
+            <strong>
+              {formatNumber(toDisplayWeight(dashboard.stats.average30Kg ?? 0, unit))} {t[unit]}
+            </strong>
+          </div>
+          <div>
+            <span>{t.lowestWeight}</span>
+            <strong>
+              {formatNumber(toDisplayWeight(dashboard.stats.lowestWeightKg ?? 0, unit))} {t[unit]}
+            </strong>
+          </div>
+        </div>
+      </div>
+
+      <svg className="own-chart" viewBox={`0 0 ${width} ${height}`} role="img">
+        <defs>
+          <linearGradient id="personal-weight-fill" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#34d5c7" stopOpacity="0.28" />
+            <stop offset="100%" stopColor="#ff7a48" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        <path className="own-chart-fill personal-fill" d={fillPath} />
+        <path
+          className="own-chart-average"
+          d={`M ${padX} ${yFor(average).toFixed(2)} L ${width - padX} ${yFor(average).toFixed(
+            2
+          )}`}
+        />
+        <path className="own-chart-path" d={path} />
+        <circle className="own-chart-low" cx={xFor(lowIndex)} cy={yFor(low)} r="6" />
+        <circle className="own-chart-last" cx={xFor(values.length - 1)} cy={yFor(last)} r="7" />
+        <text x={padX} y={22} className="chart-label">
+          {formatNumber(high)} {t[unit]}
+        </text>
+        <text x={padX} y={height - 8} className="chart-label">
+          {formatNumber(low)} {t[unit]}
+        </text>
+      </svg>
+    </section>
+  );
+}
+
+function LogWeightForm({
+  logForm,
+  setLogForm,
+  onSubmit,
+  busy,
+  language,
+  title,
+  hint
+}: {
+  logForm: LogFormState;
+  setLogForm: (updater: (current: LogFormState) => LogFormState) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  busy: string | null;
+  language: Language;
+  title: string;
+  hint?: string;
+}) {
+  const t = copy[language];
+
+  return (
+    <form className="action-panel log-action-panel" onSubmit={onSubmit}>
+      <div className="panel-title">
+        <Weight size={18} />
+        <span>{title}</span>
+      </div>
+      {hint && <p className="micro-copy panel-hint">{hint}</p>}
+      <div className="inline-fields">
+        <label>
+          <span>{t.weight}</span>
+          <input
+            type="number"
+            inputMode="decimal"
+            step="0.1"
+            min="40"
+            value={logForm.weight}
+            onChange={(event) =>
+              setLogForm((current) => ({ ...current, weight: event.target.value }))
+            }
+            required
+          />
+        </label>
+        <label>
+          <span>{t.today}</span>
+          <input
+            type="date"
+            value={logForm.date}
+            onChange={(event) => setLogForm((current) => ({ ...current, date: event.target.value }))}
+            required
+          />
+        </label>
+        <label>
+          <span>{t.note}</span>
+          <input
+            value={logForm.note}
+            onChange={(event) => setLogForm((current) => ({ ...current, note: event.target.value }))}
+          />
+        </label>
+        <button className="primary-button aqua" disabled={busy === "log"} type="submit">
+          {t.saveLog}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+function PersonalDashboardView({
+  dashboard,
+  unit,
+  language,
+  logForm,
+  setLogForm,
+  onLog,
+  onDeleteLog,
+  busy
+}: {
+  dashboard: PersonalDashboard | null;
+  unit: WeightUnit;
+  language: Language;
+  logForm: LogFormState;
+  setLogForm: (updater: (current: LogFormState) => LogFormState) => void;
+  onLog: (event: FormEvent<HTMLFormElement>) => void;
+  onDeleteLog: (date: string) => void;
+  busy: string | null;
+}) {
+  const t = copy[language];
+
+  if (!dashboard) {
+    return (
+      <section className="empty-workspace">
+        <Image src="/brand/thermal-jewel.png" alt="" width={104} height={104} />
+        <h2>{t.loading}</h2>
+      </section>
+    );
+  }
+
+  const latestWeight =
+    dashboard.stats.latestWeightKg === null
+      ? "--"
+      : `${formatNumber(toDisplayWeight(dashboard.stats.latestWeightKg, unit))} ${t[unit]}`;
+  const firstDelta =
+    dashboard.stats.changeFromFirstKg === null
+      ? "--"
+      : formatDeltaText(dashboard.stats.changeFromFirstKg, unit, language);
+  const latestMove =
+    dashboard.stats.changeFromPreviousKg === null
+      ? "--"
+      : formatDeltaText(dashboard.stats.changeFromPreviousKg, unit, language);
+  const lowestWeight =
+    dashboard.stats.lowestWeightKg === null
+      ? "--"
+      : `${formatNumber(toDisplayWeight(dashboard.stats.lowestWeightKg, unit))} ${t[unit]}`;
+
+  return (
+    <>
+      <section className="personal-hero">
+        <div>
+          <p className="eyebrow">{t.privateToYou}</p>
+          <h2>{t.personalDashboard}</h2>
+          <p>{t.personalDashboardHint}</p>
+        </div>
+        <div className="privacy-badge">
+          <Lock size={17} />
+          <span>{t.privateToYou}</span>
+        </div>
+      </section>
+
+      <section className="score-strip personal-score-strip">
+        <div className="score-card cool">
+          <Weight size={19} />
+          <span>{t.latestWeight}</span>
+          <strong>{latestWeight}</strong>
+        </div>
+        <div className="score-card">
+          <ArrowDownRight size={19} />
+          <span>{t.sinceFirst}</span>
+          <strong
+            className={
+              dashboard.stats.changeFromFirstKg !== null && dashboard.stats.changeFromFirstKg <= 0
+                ? "good"
+                : "warm"
+            }
+          >
+            {firstDelta}
+          </strong>
+        </div>
+        <div className="score-card">
+          <Activity size={19} />
+          <span>{t.latestMove}</span>
+          <strong
+            className={
+              dashboard.stats.changeFromPreviousKg !== null &&
+              dashboard.stats.changeFromPreviousKg <= 0
+                ? "good"
+                : "warm"
+            }
+          >
+            {latestMove}
+          </strong>
+        </div>
+        <div className="score-card hot">
+          <Trophy size={19} />
+          <span>{t.lowestWeight}</span>
+          <strong>{lowestWeight}</strong>
+        </div>
+      </section>
+
+      <LogWeightForm
+        busy={busy}
+        hint={t.logAppliesAllGroups}
+        language={language}
+        logForm={logForm}
+        onSubmit={onLog}
+        setLogForm={setLogForm}
+        title={t.logWeight}
+      />
+
+      <div className="personal-dashboard-grid">
+        <div className="right-stack">
+          <PersonalWeightChart dashboard={dashboard} unit={unit} language={language} />
+
+          {dashboard.highlights.length > 0 && (
+            <section className="panel">
+              <div className="panel-title">
+                <Sparkles size={18} />
+                <span>{t.trendBoard}</span>
+              </div>
+              <div className="highlight-list personal-highlights">
+                {dashboard.highlights.map((highlight, index) => (
+                  <span className={highlight.tone} key={`${highlight.kind}-${index}`}>
+                    {personalHighlightText(highlight, unit, language)}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+
+        <section className="panel logs-panel">
+          <div className="panel-title">
+            <Activity size={18} />
+            <span>{t.myLogs}</span>
+          </div>
+          <div className="log-list">
+            {dashboard.logs.length ? (
+              dashboard.logs
+                .slice()
+                .reverse()
+                .slice(0, 14)
+                .map((log) => (
+                  <article className="log-row personal-log-row" key={log.id}>
+                    <span>{log.recordedOn}</span>
+                    <strong>
+                      {formatNumber(toDisplayWeight(log.weightKg, unit))} {t[unit]}
+                    </strong>
+                    <small>{log.note || t.privateToYou}</small>
+                    <button
+                      className="icon-button ghost"
+                      type="button"
+                      aria-label="Delete log"
+                      onClick={() => onDeleteLog(log.recordedOn)}
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </article>
+                ))
+            ) : (
+              <div className="empty-state">{t.noLogs}</div>
+            )}
+          </div>
+        </section>
+      </div>
+    </>
+  );
 }
 
 function highlightText(
@@ -1903,6 +2281,8 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   const [groups, setGroups] = useState<GroupSummary[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<GroupDashboard | null>(null);
+  const [personalDashboard, setPersonalDashboard] = useState<PersonalDashboard | null>(null);
+  const [activeView, setActiveView] = useState<ActiveView>("personal");
   const [profileForm, setProfileForm] = useState({
     fullName: "",
     nickname: "",
@@ -2032,6 +2412,11 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     setSelectedGroupId((current) => current ?? groupsPayload.groups[0]?.id ?? null);
   }
 
+  async function loadPersonalDashboard() {
+    const payload = await apiFetch<PersonalDashboard>("/api/me/dashboard");
+    setPersonalDashboard(payload);
+  }
+
   async function loadDashboard(groupId = selectedGroupId) {
     if (!groupId) {
       setDashboard(null);
@@ -2047,10 +2432,14 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       setProfile(null);
       setGroups([]);
       setDashboard(null);
+      setPersonalDashboard(null);
+      setActiveView("personal");
       return;
     }
 
-    run("load", loadMeAndGroups);
+    run("load", async () => {
+      await Promise.all([loadMeAndGroups(), loadPersonalDashboard()]);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
 
@@ -2076,6 +2465,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
         body: JSON.stringify({ inviteCode })
       });
       setSelectedGroupId(payload.groupId);
+      setActiveView("group");
       await loadMeAndGroups();
       await loadDashboard(payload.groupId);
       setMessage(t.joined);
@@ -2235,6 +2625,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       });
       setGroupForm({ name: "", description: "" });
       setSelectedGroupId(payload.group.id);
+      setActiveView("group");
       await loadMeAndGroups();
       await loadDashboard(payload.group.id);
     });
@@ -2248,6 +2639,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
         body: JSON.stringify({ inviteCode: joinCode })
       });
       setSelectedGroupId(payload.groupId);
+      setActiveView("group");
       await loadMeAndGroups();
       await loadDashboard(payload.groupId);
     });
@@ -2270,16 +2662,12 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
         method: "PATCH",
         body: JSON.stringify({ baseWeightKg, baseDate: baseForm.date })
       });
-      await loadMeAndGroups();
-      await loadDashboard(selectedGroupId);
+      await Promise.all([loadMeAndGroups(), loadPersonalDashboard(), loadDashboard(selectedGroupId)]);
     });
   }
 
   async function handleLog(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!selectedGroupId) {
-      return;
-    }
 
     const weightKg = fromDisplayWeight(logForm.weight, unit);
     if (!weightKg) {
@@ -2288,25 +2676,30 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     }
 
     await run("log", async () => {
-      await apiFetch(`/api/groups/${selectedGroupId}/logs`, {
+      const payload = await apiFetch<{ readyGroupCount: number }>("/api/me/logs", {
         method: "POST",
         body: JSON.stringify({ weightKg, recordedOn: logForm.date, note: logForm.note })
       });
       setLogForm((current) => ({ ...current, note: "" }));
-      await loadDashboard(selectedGroupId);
+      await Promise.all([
+        loadPersonalDashboard(),
+        loadMeAndGroups(),
+        selectedGroupId ? loadDashboard(selectedGroupId) : Promise.resolve()
+      ]);
+      setMessage(t.logSavedAll.replace("{count}", String(payload.readyGroupCount)));
     });
   }
 
   async function handleDeleteLog(date: string) {
-    if (!selectedGroupId) {
-      return;
-    }
-
     await run("delete", async () => {
-      await apiFetch(`/api/groups/${selectedGroupId}/logs?date=${date}`, {
+      await apiFetch(`/api/me/logs?date=${date}`, {
         method: "DELETE"
       });
-      await loadDashboard(selectedGroupId);
+      await Promise.all([
+        loadPersonalDashboard(),
+        loadMeAndGroups(),
+        selectedGroupId ? loadDashboard(selectedGroupId) : Promise.resolve()
+      ]);
     });
   }
 
@@ -2670,13 +3063,27 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
 
         <section className="workspace">
           <nav className="group-tabs" aria-label={t.groups}>
+            <button
+              type="button"
+              className={activeView === "personal" ? "active personal-tab" : "personal-tab"}
+              onClick={() => setActiveView("personal")}
+            >
+              <span>
+                <Lock size={15} />
+                {t.myDashboard}
+              </span>
+              <small>{t.privateToYou}</small>
+            </button>
             {groups.length ? (
               groups.map((group) => (
                 <button
                   type="button"
-                  className={group.id === selectedGroupId ? "active" : ""}
+                  className={activeView === "group" && group.id === selectedGroupId ? "active" : ""}
                   key={group.id}
-                  onClick={() => setSelectedGroupId(group.id)}
+                  onClick={() => {
+                    setSelectedGroupId(group.id);
+                    setActiveView("group");
+                  }}
                 >
                   <span>{group.name}</span>
                   <small>
@@ -2689,8 +3096,25 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
             )}
           </nav>
 
-          {selectedGroup && dashboard ? (
+          {activeView === "personal" ? (
+            <PersonalDashboardView
+              busy={busy}
+              dashboard={personalDashboard}
+              language={language}
+              logForm={logForm}
+              onDeleteLog={handleDeleteLog}
+              onLog={handleLog}
+              setLogForm={setLogForm}
+              unit={unit}
+            />
+          ) : selectedGroup && dashboard ? (
             <>
+              <div className="view-banner">
+                <span>{t.viewingGroup}</span>
+                <strong>{dashboard.group.name}</strong>
+                <small>{t.groupViewHint}</small>
+              </div>
+
               <section className="group-hero">
                 <div>
                   <p className="eyebrow">{selectedGroup.description || t.leaderboard}</p>
@@ -2761,6 +3185,9 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                     <ShieldCheck size={18} />
                     <span>{t.setBase}</span>
                   </div>
+                  <p className="micro-copy panel-hint">
+                    {t.baseForGroup} {dashboard.group.name}
+                  </p>
                   <div className="inline-fields">
                     <label>
                       <span>{t.baseWeight}</span>
@@ -2793,51 +3220,15 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                   </div>
                 </form>
 
-                <form className="action-panel" onSubmit={handleLog}>
-                  <div className="panel-title">
-                    <Weight size={18} />
-                    <span>{t.logWeight}</span>
-                  </div>
-                  <div className="inline-fields">
-                    <label>
-                      <span>{t.weight}</span>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        step="0.1"
-                        min="40"
-                        value={logForm.weight}
-                        onChange={(event) =>
-                          setLogForm((current) => ({ ...current, weight: event.target.value }))
-                        }
-                        required
-                      />
-                    </label>
-                    <label>
-                      <span>{t.today}</span>
-                      <input
-                        type="date"
-                        value={logForm.date}
-                        onChange={(event) =>
-                          setLogForm((current) => ({ ...current, date: event.target.value }))
-                        }
-                        required
-                      />
-                    </label>
-                    <label>
-                      <span>{t.note}</span>
-                      <input
-                        value={logForm.note}
-                        onChange={(event) =>
-                          setLogForm((current) => ({ ...current, note: event.target.value }))
-                        }
-                      />
-                    </label>
-                    <button className="primary-button aqua" disabled={busy === "log"} type="submit">
-                      {t.saveLog}
-                    </button>
-                  </div>
-                </form>
+                <LogWeightForm
+                  busy={busy}
+                  hint={t.logAppliesAllGroups}
+                  language={language}
+                  logForm={logForm}
+                  onSubmit={handleLog}
+                  setLogForm={setLogForm}
+                  title={t.logWeight}
+                />
               </section>
 
               {!readyToCompete && <div className="nudge-bar">{t.noBase}</div>}

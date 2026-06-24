@@ -4,28 +4,14 @@ import {
   isAuthContext,
   jsonError,
   requireDate,
-  requireMembership,
   requirePositiveWeight
-} from "../../../_lib/server";
-import { deleteUserWeightLog, saveUserWeightLog } from "../../../_lib/weightLogs";
+} from "../../_lib/server";
+import { deleteUserWeightLog, saveUserWeightLog } from "../../_lib/weightLogs";
 
-type RouteContext = {
-  params: Promise<{
-    groupId: string;
-  }>;
-};
-
-export async function POST(request: NextRequest, context: RouteContext) {
-  const auth = await getAuthContext(request);
-  if (!isAuthContext(auth)) {
-    return auth;
-  }
-
-  const { groupId } = await context.params;
-  const membership = await requireMembership(auth.admin, groupId, auth.user.id);
-
-  if (!membership) {
-    return jsonError("Group not found.", 404, "GROUP_NOT_FOUND");
+export async function POST(request: NextRequest) {
+  const context = await getAuthContext(request);
+  if (!isAuthContext(context)) {
+    return context;
   }
 
   const body = await request.json().catch(() => ({}));
@@ -38,8 +24,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
 
   try {
     const result = await saveUserWeightLog({
-      admin: auth.admin,
-      userId: auth.user.id,
+      admin: context.admin,
+      userId: context.user.id,
       recordedOn,
       weightKg,
       note: body.note
@@ -51,17 +37,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 }
 
-export async function DELETE(request: NextRequest, context: RouteContext) {
-  const auth = await getAuthContext(request);
-  if (!isAuthContext(auth)) {
-    return auth;
-  }
-
-  const { groupId } = await context.params;
-  const membership = await requireMembership(auth.admin, groupId, auth.user.id);
-
-  if (!membership) {
-    return jsonError("Group not found.", 404, "GROUP_NOT_FOUND");
+export async function DELETE(request: NextRequest) {
+  const context = await getAuthContext(request);
+  if (!isAuthContext(context)) {
+    return context;
   }
 
   const recordedOn = requireDate(request.nextUrl.searchParams.get("date"));
@@ -72,8 +51,8 @@ export async function DELETE(request: NextRequest, context: RouteContext) {
 
   try {
     const result = await deleteUserWeightLog({
-      admin: auth.admin,
-      userId: auth.user.id,
+      admin: context.admin,
+      userId: context.user.id,
       recordedOn
     });
 
