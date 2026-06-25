@@ -346,121 +346,6 @@ function buildWeightChartGeometry(values: number[], width: number, height: numbe
   return { low, high, average, yFor, xFor, path, fillPath };
 }
 
-function OwnWeightChart({
-  dashboard,
-  unit,
-  language
-}: {
-  dashboard: GroupDashboard;
-  unit: WeightUnit;
-  language: Language;
-}) {
-  const t = copy[language];
-  const logs = dashboard.ownLogs;
-
-  if (!logs.length) {
-    return (
-      <section className="panel own-chart-panel">
-        <div className="panel-title">
-          <LineChart size={18} />
-          <span>{t.stream}</span>
-        </div>
-        <div className="empty-state">{t.noLogs}</div>
-      </section>
-    );
-  }
-
-  const width = 620;
-  const height = 230;
-  const padX = 26;
-  const padY = 30;
-  const values = logs.map((log) => toDisplayWeight(log.weightKg, unit));
-  const { low, high, average, yFor, xFor, path, fillPath } = buildWeightChartGeometry(
-    values,
-    width,
-    height,
-    padX,
-    padY
-  );
-  const last = values.at(-1)!;
-  const lowIndex = values.indexOf(low);
-  const belowAverage = last < average;
-  const latestDelta = dashboard.ownLogs.at(-1)?.deltaKg ?? null;
-
-  return (
-    <section className="panel own-chart-panel">
-      <div className="chart-heading">
-        <div>
-          <div className="panel-title">
-            <LineChart size={18} />
-            <span>{t.stream}</span>
-          </div>
-          <p className="micro-copy">
-            {belowAverage
-              ? language === "zh"
-                ? "最新体重低于个人平均"
-                : "Latest is below your own average"
-              : language === "zh"
-                ? "保持记录，趋势会更清楚"
-                : "Keep logging to sharpen the trend"}
-          </p>
-        </div>
-        <div className="chart-kpis">
-          <div>
-            <span>{t.weight}</span>
-            <strong>
-              {formatNumber(last)} {t[unit]}
-            </strong>
-          </div>
-          <div>
-            <span>{t.delta}</span>
-            <strong className={latestDelta !== null && latestDelta <= 0 ? "good" : "warm"}>
-              {formatNumber(toDisplayWeight(latestDelta ?? 0, unit))} {t[unit]}
-            </strong>
-          </div>
-        </div>
-      </div>
-
-      <svg className="own-chart" viewBox={`0 0 ${width} ${height}`} role="img">
-        <defs>
-          <linearGradient id="weight-fill" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stopColor="#34d5c7" stopOpacity="0.28" />
-            <stop offset="100%" stopColor="#ff7a48" stopOpacity="0.02" />
-          </linearGradient>
-        </defs>
-        {fillPath && <path className="own-chart-fill" d={fillPath} />}
-        <path
-          className="own-chart-average"
-          d={`M ${padX} ${yFor(average).toFixed(2)} L ${width - padX} ${yFor(average).toFixed(
-            2
-          )}`}
-        />
-        {values.length > 1 ? (
-          <path className="own-chart-path" d={path} />
-        ) : (
-          <path
-            className="own-chart-single-guide"
-            d={`M ${padX} ${yFor(last).toFixed(2)} L ${width - padX} ${yFor(last).toFixed(2)}`}
-          />
-        )}
-        <circle className="own-chart-low" cx={xFor(lowIndex)} cy={yFor(low)} r="6" />
-        <circle
-          className="own-chart-last"
-          cx={xFor(values.length - 1)}
-          cy={yFor(last)}
-          r="7"
-        />
-        <text x={padX} y={22} className="chart-label">
-          {formatNumber(high)} {t[unit]}
-        </text>
-        <text x={padX} y={height - 8} className="chart-label">
-          {formatNumber(low)} {t[unit]}
-        </text>
-      </svg>
-    </section>
-  );
-}
-
 function formatDeltaText(deltaKg: number, unit: WeightUnit, language: Language) {
   const value = toDisplayWeight(deltaKg, unit);
   const sign = value > 0 ? "+" : "";
@@ -1615,16 +1500,6 @@ function buildLocalDashboard(state: LocalPreviewState, language: Language): Grou
       bestDeltaKg: deltas.length ? roundOne(Math.min(...deltas)) : null
     },
     members,
-    ownLogs: state.ownLogs
-      .slice()
-      .sort((left, right) => left.recordedOn.localeCompare(right.recordedOn))
-      .map((log) => ({
-        id: log.id,
-        recordedOn: log.recordedOn,
-        weightKg: log.weightKg,
-        note: log.note,
-        deltaKg: me.baseWeightKg !== null ? roundOne(log.weightKg - me.baseWeightKg) : null
-      })),
     feed: group.feed.map((item) => {
       const reactionUsers = localReactionUsers();
 
@@ -2130,18 +2005,6 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
     showMessage(language === "zh" ? "体重已记录，小组变化已更新。" : "Weight logged. Group deltas updated.");
   }
 
-  function handleDeleteLog(date: string) {
-    setState((current) => {
-      const nextOwnLogs = current.ownLogs.filter((log) => log.recordedOn !== date);
-      return {
-        ...current,
-        ownLogs: nextOwnLogs,
-        groups: syncLocalMe(current.groups, nextOwnLogs, current.nickname, current.avatarUrl)
-      };
-    });
-    showMessage(language === "zh" ? "记录已删除。" : "Log deleted.");
-  }
-
   async function handleReaction(feedId: string, reaction: ReactionType) {
     const busyKey = `react-${feedId}-${reaction}`;
     setBusy(busyKey);
@@ -2592,46 +2455,6 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
                 onReact={handleReaction}
                 unit={unit}
               />
-
-              <OwnWeightChart dashboard={dashboard} unit={unit} language={language} />
-
-              <section className="panel logs-panel">
-                <div className="panel-title">
-                  <Activity size={18} />
-                  <span>{t.myLogs}</span>
-                </div>
-                <div className="log-list">
-                  {dashboard.ownLogs.length ? (
-                    dashboard.ownLogs
-                      .slice()
-                      .reverse()
-                      .slice(0, 10)
-                      .map((log) => (
-                        <article className="log-row" key={log.id}>
-                          <span>{log.recordedOn}</span>
-                          <strong>
-                            {formatNumber(toDisplayWeight(log.weightKg, unit))} {t[unit]}
-                          </strong>
-                          <small>
-                            {log.deltaKg === null
-                              ? "--"
-                              : `${formatNumber(toDisplayWeight(log.deltaKg, unit))} ${t[unit]}`}
-                          </small>
-                          <button
-                            className="icon-button ghost"
-                            type="button"
-                            aria-label="Delete log"
-                            onClick={() => handleDeleteLog(log.recordedOn)}
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </article>
-                      ))
-                  ) : (
-                    <div className="empty-state">{t.noLogs}</div>
-                  )}
-                </div>
-              </section>
             </div>
           </div>
         </section>
@@ -3727,46 +3550,6 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                     onReact={handleReaction}
                     unit={unit}
                   />
-
-                  <OwnWeightChart dashboard={dashboard} unit={unit} language={language} />
-
-                  <section className="panel logs-panel">
-                    <div className="panel-title">
-                      <Activity size={18} />
-                      <span>{t.myLogs}</span>
-                    </div>
-                    <div className="log-list">
-                      {dashboard.ownLogs.length ? (
-                        dashboard.ownLogs
-                          .slice()
-                          .reverse()
-                          .slice(0, 10)
-                          .map((log) => (
-                            <article className="log-row" key={log.id}>
-                              <span>{log.recordedOn}</span>
-                              <strong>
-                                {formatNumber(toDisplayWeight(log.weightKg, unit))} {t[unit]}
-                              </strong>
-                              <small>
-                                {log.deltaKg === null
-                                  ? "--"
-                                  : `${formatNumber(toDisplayWeight(log.deltaKg, unit))} ${t[unit]}`}
-                              </small>
-                              <button
-                                className="icon-button ghost"
-                                type="button"
-                                aria-label="Delete log"
-                                onClick={() => handleDeleteLog(log.recordedOn)}
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </article>
-                          ))
-                      ) : (
-                        <div className="empty-state">{t.noLogs}</div>
-                      )}
-                    </div>
-                  </section>
                 </div>
               </div>
             </>

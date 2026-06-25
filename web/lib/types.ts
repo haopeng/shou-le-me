@@ -63,14 +63,6 @@ export type DashboardMember = {
   isMe: boolean;
 };
 
-export type OwnLog = {
-  id: string;
-  recordedOn: string;
-  weightKg: number;
-  note: string | null;
-  deltaKg: number | null;
-};
-
 export type PersonalLog = {
   id: string;
   recordedOn: string;
@@ -150,7 +142,6 @@ export type GroupDashboard = {
     bestDeltaKg: number | null;
   };
   members: DashboardMember[];
-  ownLogs: OwnLog[];
   feed: FeedItem[];
 };
 

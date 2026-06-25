@@ -381,18 +381,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
       return left.joinedAt.localeCompare(right.joinedAt);
     });
 
-  const ownLogs = (logsByUser.get(auth.user.id) ?? []).map((log) => {
-    const weightKg = Number(log.weight_kg);
-    const baseWeight = numberOrNull(membership.base_weight_kg);
-    return {
-      id: log.id,
-      recordedOn: log.recorded_on,
-      weightKg: roundTenth(weightKg) ?? weightKg,
-      note: log.note,
-      deltaKg: baseWeight !== null ? roundTenth(weightKg - baseWeight) : null
-    };
-  });
-
   const deltas = computed
     .map((entry) => entry.deltaKg)
     .filter((delta): delta is number => delta !== null);
@@ -520,7 +508,6 @@ export async function GET(request: NextRequest, context: RouteContext) {
       bestDeltaKg: deltas.length ? roundTenth(Math.min(...deltas)) : null
     },
     members: membersPayload,
-    ownLogs,
     feed
   });
 }
