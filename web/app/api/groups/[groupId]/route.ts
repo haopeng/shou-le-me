@@ -70,6 +70,13 @@ type ReactionUser = {
   isMe: boolean;
 };
 
+type JoinRequestRow = {
+  id: string;
+  requester_user_id: string;
+  message: string | null;
+  requested_at: string;
+};
+
 type MemberHighlight = {
   kind:
     | "base_needed"
@@ -104,6 +111,19 @@ function displayNameFor(member: MemberRow, profile: ProfileRow | undefined) {
     "Member";
 
   return name.trim() || "Member";
+}
+
+function profileDisplayName(profile: ProfileRow | undefined) {
+  return (
+    profile?.nickname?.trim() ||
+    profile?.full_name?.trim() ||
+    profile?.email?.split("@")[0] ||
+    "Member"
+  );
+}
+
+function joinRequestsUnavailable(error: { code?: string; message?: string } | null) {
+  return error?.code === "42P01" || error?.message?.includes("slim_group_join_requests");
 }
 
 function badgeKeys(logs: WeightLogRow[], baseWeight: number | null, latestWeight: number | null) {
@@ -282,6 +302,62 @@ export async function GET(request: NextRequest, context: RouteContext) {
     for (const profile of (profiles ?? []) as ProfileRow[]) {
       profilesById.set(profile.id, profile);
     }
+  }
+
+  let joinRequestsPayload: Array<{
+    id: string;
+    requesterUserId: string;
+    requesterName: string;
+    requesterEmail: string | null;
+    requesterAvatarUrl: string | null;
+    message: string | null;
+    requestedAt: string;
+  }> = [];
+
+  if (membership.role === "owner") {
+    const { data: pendingRequests, error: joinRequestsError } = await auth.admin
+      .from("slim_group_join_requests")
+      .select("id,requester_user_id,message,requested_at")
+      .eq("group_id", groupId)
+      .eq("status", "pending")
+      .order("requested_at", { ascending: true });
+
+    if (joinRequestsError && !joinRequestsUnavailable(joinRequestsError)) {
+      return jsonError(joinRequestsError.message, 500);
+    }
+
+    const requestRows = (pendingRequests ?? []) as JoinRequestRow[];
+    const requesterIds = requestRows
+      .map((requestRow) => requestRow.requester_user_id)
+      .filter((userId) => !profilesById.has(userId));
+
+    if (requesterIds.length) {
+      const { data: requesterProfiles, error: requesterProfilesError } = await auth.admin
+        .from("slim_profiles")
+        .select("id,email,full_name,nickname,avatar_url")
+        .in("id", requesterIds);
+
+      if (requesterProfilesError) {
+        return jsonError(requesterProfilesError.message, 500);
+      }
+
+      for (const profile of (requesterProfiles ?? []) as ProfileRow[]) {
+        profilesById.set(profile.id, profile);
+      }
+    }
+
+    joinRequestsPayload = requestRows.map((requestRow) => {
+      const requesterProfile = profilesById.get(requestRow.requester_user_id);
+      return {
+        id: requestRow.id,
+        requesterUserId: requestRow.requester_user_id,
+        requesterName: profileDisplayName(requesterProfile),
+        requesterEmail: requesterProfile?.email ?? null,
+        requesterAvatarUrl: requesterProfile?.avatar_url ?? null,
+        message: requestRow.message,
+        requestedAt: requestRow.requested_at
+      };
+    });
   }
 
   const logsByUser = new Map<string, WeightLogRow[]>();
@@ -508,6 +584,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       bestDeltaKg: deltas.length ? roundTenth(Math.min(...deltas)) : null
     },
     members: membersPayload,
-    feed
+    feed,
+    joinRequests: membership.role === "owner" ? joinRequestsPayload : []
   });
 }

@@ -25,6 +25,34 @@ export type GroupSummary = {
   myBaseDate: string | null;
 };
 
+export type PublicTopGroup = {
+  id: string;
+  name: string;
+  description: string | null;
+  memberCount: number;
+  readyCount: number;
+  totalLossKg: number;
+};
+
+export type PublicTopUser = {
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  lossKg: number;
+  loggedDays: number;
+};
+
+export type PublicDashboard = {
+  generatedAt: string;
+  stats: {
+    groupCount: number;
+    userCount: number;
+    totalLossKg: number;
+  };
+  topGroups: PublicTopGroup[];
+  topUsers: PublicTopUser[];
+};
+
 export type SparkPoint = {
   date: string;
   deltaKg: number;
@@ -110,6 +138,13 @@ export type AppStatusDashboard = {
     feedItems7dCount: number;
     reactions7dCount: number;
   };
+  groups: Array<{
+    id: string;
+    name: string;
+    ownerEmail: string | null;
+    memberCount: number;
+    memberEmails: string[];
+  }>;
 };
 
 export type ReactionUser = {
@@ -136,6 +171,16 @@ export type FeedItem = {
   myReaction?: ReactionType | null;
 };
 
+export type GroupJoinRequest = {
+  id: string;
+  requesterUserId: string;
+  requesterName: string;
+  requesterEmail: string | null;
+  requesterAvatarUrl: string | null;
+  message: string | null;
+  requestedAt: string;
+};
+
 export type GroupDashboard = {
   group: {
     id: string;
@@ -160,6 +205,7 @@ export type GroupDashboard = {
   };
   members: DashboardMember[];
   feed: FeedItem[];
+  joinRequests?: GroupJoinRequest[];
 };
 
 export type ApiError = {

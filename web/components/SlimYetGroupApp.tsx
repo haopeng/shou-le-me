@@ -46,6 +46,7 @@ import type {
   Language,
   PersonalDashboard,
   Profile,
+  PublicDashboard,
   ReactionType,
   ReactionUser,
   WeightUnit
@@ -57,7 +58,7 @@ type SlimYetGroupAppProps = {
   inviteCode?: string;
 };
 
-type ActiveView = "status" | "personal" | "group";
+type ActiveView = "top5" | "status" | "personal" | "group";
 
 type LogFormState = {
   weight: string;
@@ -153,7 +154,7 @@ function writeSelectionUrl({
 }: {
   language: Language;
   inviteCode?: string;
-  view?: "status" | "me";
+  view?: "top5" | "status" | "me";
   replace?: boolean;
 }) {
   if (typeof window === "undefined") {
@@ -643,6 +644,198 @@ function StatusDashboardView({
           </div>
         </div>
       </section>
+
+      <section className="panel admin-directory-panel">
+        <div className="panel-title">
+          <Lock size={18} />
+          <span>{t.privateGroupDirectory}</span>
+        </div>
+        <div className="admin-group-directory">
+          {dashboard.groups.map((group) => (
+            <article className="admin-group-row" key={group.id}>
+              <div>
+                <strong>{group.name}</strong>
+                <span>
+                  {group.memberCount} {t.members}
+                </span>
+              </div>
+              <div>
+                <span>{t.groupAdmin}</span>
+                <code>{group.ownerEmail ?? "--"}</code>
+              </div>
+              <div className="email-chip-list">
+                <span>{t.memberEmails}</span>
+                {group.memberEmails.length ? (
+                  <p>{group.memberEmails.join(", ")}</p>
+                ) : (
+                  <p>{t.noMembers}</p>
+                )}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
+
+function Top5DashboardView({
+  dashboard,
+  unit,
+  language,
+  myGroups,
+  signedIn,
+  busy,
+  onOpenGroup,
+  onRequestJoin
+}: {
+  dashboard: PublicDashboard | null;
+  unit: WeightUnit;
+  language: Language;
+  myGroups: GroupSummary[];
+  signedIn: boolean;
+  busy: string | null;
+  onOpenGroup: (group: GroupSummary) => void;
+  onRequestJoin: (groupId: string) => void;
+}) {
+  const t = copy[language];
+  const myGroupsById = new Map(myGroups.map((group) => [group.id, group]));
+
+  if (!dashboard) {
+    return (
+      <section className="empty-workspace compact-loading">
+        <Image src="/brand/thermal-jewel.png" alt="" width={84} height={84} />
+        <h2>{t.loading}</h2>
+      </section>
+    );
+  }
+
+  const totalLoss = `${formatNumber(toDisplayWeight(dashboard.stats.totalLossKg, unit))} ${t[unit]}`;
+
+  return (
+    <>
+      <section className="personal-hero top5-hero">
+        <div>
+          <p className="eyebrow">{t.publicDashboardHint}</p>
+          <h2>{t.top5Title}</h2>
+          <p>{t.top5Hint}</p>
+        </div>
+        <div className="privacy-badge">
+          <ShieldCheck size={17} />
+          <span>{t.publicPrivacyNote}</span>
+        </div>
+      </section>
+
+      <section className="score-strip top5-score-strip">
+        <div className="score-card hot">
+          <Flame size={19} />
+          <span>{t.totalPublicLoss}</span>
+          <strong>{totalLoss}</strong>
+        </div>
+        <div className="score-card">
+          <Trophy size={19} />
+          <span>{t.topGroups}</span>
+          <strong>{formatNumber(dashboard.topGroups.length, 0)}</strong>
+        </div>
+        <div className="score-card cool">
+          <UserRound size={19} />
+          <span>{t.topUsers}</span>
+          <strong>{formatNumber(dashboard.topUsers.length, 0)}</strong>
+        </div>
+      </section>
+
+      <div className="top5-grid">
+        <section className="panel leaderboard-panel">
+          <div className="panel-title">
+            <Trophy size={18} />
+            <span>{t.topGroups}</span>
+          </div>
+          <div className="leaderboard">
+            {dashboard.topGroups.length ? (
+              dashboard.topGroups.map((group, index) => {
+                const memberGroup = myGroupsById.get(group.id) ?? null;
+                const requestBusy = busy === `request-${group.id}`;
+                return (
+                  <article className="top5-row" key={group.id}>
+                    <div className="rank-cell">{index + 1}</div>
+                    <div className="top5-main">
+                      <strong>{group.name}</strong>
+                      <span>
+                        {group.memberCount} {t.members} · {group.readyCount}/{group.memberCount}{" "}
+                        {t.ready}
+                      </span>
+                    </div>
+                    <div className="delta-cell">
+                      <strong className="good">
+                        {formatNumber(toDisplayWeight(group.totalLossKg, unit))} {t[unit]}
+                      </strong>
+                      <span>{t.totalLoss}</span>
+                    </div>
+                    <button
+                      className={memberGroup ? "secondary-button" : "primary-button"}
+                      disabled={requestBusy || (!signedIn && !memberGroup)}
+                      type="button"
+                      onClick={() => {
+                        if (memberGroup) {
+                          onOpenGroup(memberGroup);
+                        } else {
+                          onRequestJoin(group.id);
+                        }
+                      }}
+                    >
+                      {memberGroup
+                        ? t.openGroup
+                        : signedIn
+                          ? requestBusy
+                            ? t.joining
+                            : t.requestToJoin
+                          : t.signInToRequest}
+                    </button>
+                  </article>
+                );
+              })
+            ) : (
+              <div className="empty-state compact-empty">{t.noGroups}</div>
+            )}
+          </div>
+        </section>
+
+        <section className="panel leaderboard-panel">
+          <div className="panel-title">
+            <Medal size={18} />
+            <span>{t.topUsers}</span>
+          </div>
+          <div className="leaderboard">
+            {dashboard.topUsers.length ? (
+              dashboard.topUsers.map((user, index) => (
+                <article className="leader-row public-user-row" key={user.userId}>
+                  <div className="rank-cell">{index + 1}</div>
+                  <Avatar name={user.displayName} url={user.avatarUrl} />
+                  <div className="leader-main">
+                    <div className="leader-name">
+                      <strong>{user.displayName}</strong>
+                      {index === 0 && <span>{t.topUser}</span>}
+                    </div>
+                    <div className="badge-row">
+                      <small>
+                        {user.loggedDays} {t.loggedDays}
+                      </small>
+                    </div>
+                  </div>
+                  <div className="delta-cell">
+                    <strong className="good">
+                      {formatNumber(toDisplayWeight(user.lossKg, unit))} {t[unit]}
+                    </strong>
+                    <span>{t.down}</span>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="empty-state compact-empty">{t.noLogs}</div>
+            )}
+          </div>
+        </section>
+      </div>
     </>
   );
 }
@@ -1119,6 +1312,75 @@ function FeedPanel({
         ) : (
           <div className="empty-state">{t.noFeed}</div>
         )}
+      </div>
+    </section>
+  );
+}
+
+function JoinRequestsPanel({
+  requests,
+  language,
+  busy,
+  onDecision
+}: {
+  requests: GroupDashboard["joinRequests"];
+  language: Language;
+  busy: string | null;
+  onDecision: (requestId: string, action: "approve" | "reject") => void;
+}) {
+  const t = copy[language];
+  const pendingRequests = requests ?? [];
+
+  if (!pendingRequests.length) {
+    return null;
+  }
+
+  return (
+    <section className="panel join-requests-panel">
+      <div className="panel-title">
+        <Users size={18} />
+        <span>{t.pendingRequests}</span>
+      </div>
+      <p className="micro-copy">{t.joinRequestHint}</p>
+      <div className="join-request-list">
+        {pendingRequests.map((request) => (
+          <article className="join-request-row" key={request.id}>
+            <Avatar name={request.requesterName} url={request.requesterAvatarUrl} />
+            <div className="join-request-main">
+              <strong>{request.requesterName}</strong>
+              {request.requesterEmail && <span>{request.requesterEmail}</span>}
+              <time dateTime={request.requestedAt}>
+                {t.requestedOn}:{" "}
+                {new Date(request.requestedAt).toLocaleDateString(
+                  language === "zh" ? "zh-CN" : "en-US",
+                  {
+                    month: "short",
+                    day: "numeric"
+                  }
+                )}
+              </time>
+              {request.message && <p>{request.message}</p>}
+            </div>
+            <div className="join-request-actions">
+              <button
+                className="primary-button"
+                disabled={busy === `join-request-${request.id}-approve`}
+                type="button"
+                onClick={() => onDecision(request.id, "approve")}
+              >
+                {t.approve}
+              </button>
+              <button
+                className="secondary-button"
+                disabled={busy === `join-request-${request.id}-reject`}
+                type="button"
+                onClick={() => onDecision(request.id, "reject")}
+              >
+                {t.reject}
+              </button>
+            </div>
+          </article>
+        ))}
       </div>
     </section>
   );
@@ -2581,7 +2843,8 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   const [dashboard, setDashboard] = useState<GroupDashboard | null>(null);
   const [personalDashboard, setPersonalDashboard] = useState<PersonalDashboard | null>(null);
   const [statusDashboard, setStatusDashboard] = useState<AppStatusDashboard | null>(null);
-  const [activeView, setActiveView] = useState<ActiveView>("status");
+  const [publicDashboard, setPublicDashboard] = useState<PublicDashboard | null>(null);
+  const [activeView, setActiveView] = useState<ActiveView>("top5");
   const [selectedMember, setSelectedMember] = useState<GroupDashboard["members"][number] | null>(
     null
   );
@@ -2617,6 +2880,15 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   useEffect(() => {
     window.localStorage.setItem("slim-yet-unit", unit);
   }, [unit]);
+
+  useEffect(() => {
+    if (!hasSupabaseConfig) {
+      return;
+    }
+
+    loadPublicDashboard().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!supabaseUrl || !supabaseAnonKey) {
@@ -2696,6 +2968,17 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     }
   }
 
+  async function loadPublicDashboard() {
+    const response = await fetch("/api/public-dashboard", { cache: "no-store" });
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      throw new Error(payload.error ?? t.errorFallback);
+    }
+
+    setPublicDashboard(payload as PublicDashboard);
+  }
+
   async function loadMeAndGroups() {
     const mePayload = await apiFetch<{ profile: Profile }>("/api/me");
     setProfile(mePayload.profile);
@@ -2721,7 +3004,9 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
 
     setSelectedGroupId((current) => current ?? groupsPayload.groups[0]?.id ?? null);
     const viewToken = getUrlViewToken();
-    if (viewToken === "status" && mePayload.profile.isStatusAdmin) {
+    if (viewToken === "top5") {
+      setActiveView("top5");
+    } else if (viewToken === "status" && mePayload.profile.isStatusAdmin) {
       setActiveView("status");
     } else if (viewToken === "me" || !mePayload.profile.isStatusAdmin) {
       setActiveView("personal");
@@ -2761,6 +3046,12 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     setDashboard(payload);
   }
 
+  function showTop5View(replace = false) {
+    setSelectedMember(null);
+    setActiveView("top5");
+    writeSelectionUrl({ language, view: "top5", replace });
+  }
+
   function showPersonalView(replace = false) {
     setSelectedMember(null);
     setActiveView("personal");
@@ -2792,13 +3083,17 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       setDashboard(null);
       setPersonalDashboard(null);
       setStatusDashboard(null);
-      setActiveView("personal");
+      setActiveView("top5");
       return;
     }
 
     run("load", async () => {
       const loadedProfile = await loadMeAndGroups();
-      await Promise.all([loadPersonalDashboard(), loadStatusDashboardIfAllowed(loadedProfile)]);
+      await Promise.all([
+        loadPublicDashboard(),
+        loadPersonalDashboard(),
+        loadStatusDashboardIfAllowed(loadedProfile)
+      ]);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
@@ -2828,7 +3123,9 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       }
 
       const viewToken = getUrlViewToken();
-      if (viewToken === "me") {
+      if (viewToken === "top5") {
+        setActiveView("top5");
+      } else if (viewToken === "me") {
         setActiveView("personal");
       } else if ((viewToken === "status" || !getUrlGroupToken()) && profile?.isStatusAdmin) {
         setActiveView("status");
@@ -2854,7 +3151,11 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       });
       showGroupView({ id: payload.groupId, inviteCode: payload.inviteCode }, true);
       const loadedProfile = await loadMeAndGroups();
-      await Promise.all([loadDashboard(payload.groupId), loadStatusDashboardIfAllowed(loadedProfile)]);
+      await Promise.all([
+        loadPublicDashboard(),
+        loadDashboard(payload.groupId),
+        loadStatusDashboardIfAllowed(loadedProfile)
+      ]);
       setMessage(t.joined);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -3013,7 +3314,11 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       setGroupForm({ name: "", description: "" });
       showGroupView(payload.group);
       const loadedProfile = await loadMeAndGroups();
-      await Promise.all([loadDashboard(payload.group.id), loadStatusDashboardIfAllowed(loadedProfile)]);
+      await Promise.all([
+        loadPublicDashboard(),
+        loadDashboard(payload.group.id),
+        loadStatusDashboardIfAllowed(loadedProfile)
+      ]);
     });
   }
 
@@ -3026,7 +3331,51 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       });
       showGroupView({ id: payload.groupId, inviteCode: payload.inviteCode });
       const loadedProfile = await loadMeAndGroups();
-      await Promise.all([loadDashboard(payload.groupId), loadStatusDashboardIfAllowed(loadedProfile)]);
+      await Promise.all([
+        loadPublicDashboard(),
+        loadDashboard(payload.groupId),
+        loadStatusDashboardIfAllowed(loadedProfile)
+      ]);
+    });
+  }
+
+  async function handleRequestJoin(groupId: string) {
+    if (!session) {
+      setError(null);
+      setMessage(t.signInToRequest);
+      return;
+    }
+
+    await run(`request-${groupId}`, async () => {
+      const payload = await apiFetch<{ status: "member" | "pending"; requestId?: string }>(
+        `/api/groups/${groupId}/join-requests`,
+        {
+          method: "POST",
+          body: JSON.stringify({})
+        }
+      );
+      setMessage(payload.status === "member" ? t.alreadyMember : t.joinRequestSent);
+      await loadPublicDashboard();
+    });
+  }
+
+  async function handleJoinRequestDecision(requestId: string, action: "approve" | "reject") {
+    if (!selectedGroupId) {
+      return;
+    }
+
+    await run(`join-request-${requestId}-${action}`, async () => {
+      await apiFetch(`/api/groups/${selectedGroupId}/join-requests/${requestId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ action })
+      });
+      setMessage(action === "approve" ? t.approved : t.rejected);
+      const loadedProfile = await loadMeAndGroups();
+      await Promise.all([
+        loadPublicDashboard(),
+        loadStatusDashboardIfAllowed(loadedProfile),
+        loadDashboard(selectedGroupId)
+      ]);
     });
   }
 
@@ -3049,6 +3398,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       });
       const loadedProfile = await loadMeAndGroups();
       await Promise.all([
+        loadPublicDashboard(),
         loadPersonalDashboard(),
         loadStatusDashboardIfAllowed(loadedProfile),
         loadDashboard(selectedGroupId)
@@ -3073,6 +3423,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       setLogForm((current) => ({ ...current, note: "" }));
       const loadedProfile = await loadMeAndGroups();
       await Promise.all([
+        loadPublicDashboard(),
         loadPersonalDashboard(),
         loadStatusDashboardIfAllowed(loadedProfile),
         selectedGroupId ? loadDashboard(selectedGroupId) : Promise.resolve()
@@ -3088,6 +3439,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       });
       const loadedProfile = await loadMeAndGroups();
       await Promise.all([
+        loadPublicDashboard(),
         loadPersonalDashboard(),
         loadStatusDashboardIfAllowed(loadedProfile),
         selectedGroupId ? loadDashboard(selectedGroupId) : Promise.resolve()
@@ -3292,6 +3644,19 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
             <p className={error ? "form-message error" : "form-message"}>{error ?? message}</p>
           )}
         </section>
+
+        <section className="auth-top5">
+          <Top5DashboardView
+            busy={busy}
+            dashboard={publicDashboard}
+            language={language}
+            myGroups={[]}
+            onOpenGroup={() => undefined}
+            onRequestJoin={handleRequestJoin}
+            signedIn={false}
+            unit={unit}
+          />
+        </section>
       </main>
     );
   }
@@ -3456,6 +3821,17 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
 
         <section className="workspace">
           <nav className="group-tabs" aria-label={t.groups}>
+            <button
+              type="button"
+              className={activeView === "top5" ? "active top5-tab" : "top5-tab"}
+              onClick={() => showTop5View()}
+            >
+              <span>
+                <Trophy size={15} />
+                {t.publicDashboard}
+              </span>
+              <small>{t.publicDashboardHint}</small>
+            </button>
             {canViewStatus && (
               <button
                 type="button"
@@ -3499,7 +3875,18 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
             )}
           </nav>
 
-          {canViewStatus && activeView === "status" ? (
+          {activeView === "top5" ? (
+            <Top5DashboardView
+              busy={busy}
+              dashboard={publicDashboard}
+              language={language}
+              myGroups={groups}
+              onOpenGroup={(group) => showGroupView(group)}
+              onRequestJoin={handleRequestJoin}
+              signedIn={Boolean(session)}
+              unit={unit}
+            />
+          ) : canViewStatus && activeView === "status" ? (
             <StatusDashboardView
               dashboard={statusDashboard}
               language={language}
@@ -3709,6 +4096,14 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                 </section>
 
                 <div className="right-stack">
+                  {dashboard.me.role === "owner" && (
+                    <JoinRequestsPanel
+                      busy={busy}
+                      language={language}
+                      onDecision={handleJoinRequestDecision}
+                      requests={dashboard.joinRequests}
+                    />
+                  )}
                   <FeedPanel
                     busy={busy}
                     dashboard={dashboard}

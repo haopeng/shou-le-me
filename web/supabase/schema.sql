@@ -44,6 +44,19 @@ create table if not exists public.slim_group_members (
   unique (group_id, user_id)
 );
 
+create table if not exists public.slim_group_join_requests (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references public.slim_groups(id) on delete cascade,
+  requester_user_id uuid not null references public.slim_profiles(id) on delete cascade,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'rejected', 'cancelled')),
+  message text,
+  requested_at timestamptz not null default now(),
+  decided_at timestamptz,
+  decided_by uuid references public.slim_profiles(id) on delete set null,
+  updated_at timestamptz not null default now(),
+  unique (group_id, requester_user_id)
+);
+
 create table if not exists public.slim_weight_logs (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references public.slim_profiles(id) on delete cascade,
@@ -110,6 +123,8 @@ $$;
 create index if not exists slim_groups_invite_code_idx on public.slim_groups(invite_code);
 create index if not exists slim_group_members_user_id_idx on public.slim_group_members(user_id);
 create index if not exists slim_group_members_group_id_idx on public.slim_group_members(group_id);
+create index if not exists slim_group_join_requests_group_status_idx on public.slim_group_join_requests(group_id, status, requested_at desc);
+create index if not exists slim_group_join_requests_requester_idx on public.slim_group_join_requests(requester_user_id);
 create unique index if not exists slim_weight_logs_user_date_idx on public.slim_weight_logs(user_id, recorded_on);
 create index if not exists slim_feed_items_group_created_idx on public.slim_feed_items(group_id, created_at desc);
 create index if not exists slim_feed_items_actor_idx on public.slim_feed_items(actor_user_id);
@@ -128,6 +143,11 @@ for each row execute function public.set_updated_at();
 drop trigger if exists slim_group_members_set_updated_at on public.slim_group_members;
 create trigger slim_group_members_set_updated_at
 before update on public.slim_group_members
+for each row execute function public.set_updated_at();
+
+drop trigger if exists slim_group_join_requests_set_updated_at on public.slim_group_join_requests;
+create trigger slim_group_join_requests_set_updated_at
+before update on public.slim_group_join_requests
 for each row execute function public.set_updated_at();
 
 drop trigger if exists slim_weight_logs_set_updated_at on public.slim_weight_logs;
@@ -168,6 +188,7 @@ for each row execute function public.handle_new_user();
 alter table public.slim_profiles enable row level security;
 alter table public.slim_groups enable row level security;
 alter table public.slim_group_members enable row level security;
+alter table public.slim_group_join_requests enable row level security;
 alter table public.slim_weight_logs enable row level security;
 alter table public.slim_feed_items enable row level security;
 alter table public.slim_feed_reactions enable row level security;

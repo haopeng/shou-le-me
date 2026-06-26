@@ -157,6 +157,12 @@ label span {
   gap: 34px;
 }
 
+.auth-top5 {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 14px;
+}
+
 .auth-brand {
   min-height: min(620px, calc(100vh - 44px));
   display: flex;
@@ -579,6 +585,13 @@ label span {
     0 10px 24px rgba(112, 100, 255, 0.14);
 }
 
+.group-tabs .top5-tab.active {
+  border-color: rgba(255, 184, 77, 0.62);
+  box-shadow:
+    inset 0 -4px 0 var(--gold),
+    0 10px 24px rgba(255, 184, 77, 0.16);
+}
+
 .group-tabs span,
 .group-tabs small {
   display: block;
@@ -593,7 +606,8 @@ label span {
 }
 
 .group-tabs .personal-tab span,
-.group-tabs .status-tab span {
+.group-tabs .status-tab span,
+.group-tabs .top5-tab span {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -663,6 +677,12 @@ label span {
     radial-gradient(circle at 88% 18%, rgba(255, 255, 255, 0.22), transparent 28%),
     linear-gradient(135deg, #24c6bc, #7064ff 54%, #ff563f);
   box-shadow: var(--shadow);
+}
+
+.top5-hero {
+  background:
+    radial-gradient(circle at 86% 16%, rgba(255, 255, 255, 0.24), transparent 28%),
+    linear-gradient(135deg, #ff563f, #ffb84d 42%, #24c6bc);
 }
 
 .personal-hero h2 {
@@ -750,6 +770,10 @@ label span {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.top5-score-strip {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
 .score-card {
   min-height: 104px;
   display: grid;
@@ -824,6 +848,99 @@ label span {
   color: var(--ink);
   font-size: 1.5rem;
   line-height: 1;
+}
+
+.admin-directory-panel {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-group-directory {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-group-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.8fr) minmax(180px, 0.9fr) minmax(220px, 1.5fr);
+  gap: 12px;
+  border: 1px solid rgba(31, 41, 51, 0.08);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 12px;
+}
+
+.admin-group-row > div {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  min-width: 0;
+}
+
+.admin-group-row strong {
+  color: var(--ink);
+  font-weight: 950;
+}
+
+.admin-group-row span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.admin-group-row code,
+.admin-group-row p {
+  margin: 0;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 780;
+  overflow-wrap: anywhere;
+}
+
+.top5-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(330px, 0.85fr);
+  gap: 12px;
+}
+
+.top5-row {
+  display: grid;
+  grid-template-columns: 38px minmax(150px, 1fr) minmax(92px, 120px) minmax(128px, auto);
+  align-items: center;
+  gap: 10px;
+  min-height: 78px;
+  border: 1px solid rgba(31, 41, 51, 0.08);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(90deg, rgba(255, 184, 77, 0.14), rgba(255, 255, 255, 0.78)),
+    #fff;
+  padding: 10px;
+}
+
+.top5-main {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.top5-main strong {
+  color: var(--ink);
+  font-weight: 950;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.top5-main span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 760;
+}
+
+.top5-row button {
+  min-height: 40px;
+  padding: 0 12px;
+  white-space: nowrap;
 }
 
 .action-row {
@@ -1127,6 +1244,10 @@ label span {
 
 .leader-row.me {
   box-shadow: inset 4px 0 0 var(--aqua);
+}
+
+.public-user-row {
+  cursor: default;
 }
 
 .rank-cell {
@@ -1534,6 +1655,66 @@ label span {
   gap: 10px;
 }
 
+.join-requests-panel {
+  display: grid;
+  gap: 10px;
+}
+
+.join-request-list {
+  display: grid;
+  gap: 9px;
+}
+
+.join-request-row {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 10px;
+  border: 1px solid rgba(255, 86, 63, 0.18);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(255, 86, 63, 0.09), rgba(255, 255, 255, 0.76)),
+    #fff;
+  padding: 10px;
+}
+
+.join-request-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.join-request-main strong {
+  color: var(--ink);
+  font-weight: 950;
+}
+
+.join-request-main span,
+.join-request-main time {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 760;
+  overflow-wrap: anywhere;
+}
+
+.join-request-main p {
+  margin: 3px 0 0;
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 760;
+}
+
+.join-request-actions {
+  grid-column: 2;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
+.join-request-actions button {
+  min-height: 36px;
+  padding: 0 10px;
+}
+
 .feed-item {
   display: grid;
   grid-template-columns: 42px minmax(0, 1fr);
@@ -1715,7 +1896,8 @@ label span {
 @media (max-width: 1180px) {
   .app-grid,
   .dashboard-grid,
-  .personal-dashboard-grid {
+  .personal-dashboard-grid,
+  .top5-grid {
     grid-template-columns: 1fr;
   }
 
@@ -1740,8 +1922,13 @@ label span {
   .score-strip,
   .action-row,
   .side-rail,
-  .status-detail-grid {
+  .status-detail-grid,
+  .admin-group-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-group-row .email-chip-list {
+    grid-column: 1 / -1;
   }
 
   .workspace {
@@ -1796,6 +1983,7 @@ label span {
   .score-strip,
   .side-rail,
   .status-detail-grid,
+  .admin-group-row,
   .trend-card-grid,
   .setup-points,
   .inline-fields,
@@ -1811,6 +1999,20 @@ label span {
 
   .leader-row {
     grid-template-columns: 34px 38px minmax(0, 1fr) minmax(72px, auto);
+  }
+
+  .top5-row {
+    grid-template-columns: 34px minmax(0, 1fr);
+  }
+
+  .top5-row .delta-cell,
+  .top5-row button {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .admin-group-row .email-chip-list {
+    grid-column: auto;
   }
 
   .personal-log-row,
@@ -1879,6 +2081,18 @@ label span {
 
   .share-box .icon-button {
     width: 100%;
+  }
+
+  .top5-row {
+    grid-template-columns: 30px minmax(0, 1fr);
+  }
+
+  .top5-row button {
+    width: 100%;
+  }
+
+  .join-request-actions {
+    grid-template-columns: 1fr;
   }
 
   .member-stats-grid {

@@ -86,7 +86,7 @@ export function normalizeInviteCode(value: unknown) {
   return code.length >= 5 && code.length <= 24 ? code : null;
 }
 
-function getAdminClient() {
+export function getAdminClient() {
   if (!adminClient) {
     adminClient = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

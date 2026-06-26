@@ -14,6 +14,22 @@ type WeightLogRow = {
   weight_kg: number | string;
 };
 
+type GroupRow = {
+  id: string;
+  name: string;
+  owner_id: string;
+};
+
+type MemberRow = {
+  group_id: string;
+  user_id: string;
+};
+
+type ProfileRow = {
+  id: string;
+  email: string | null;
+};
+
 function countValue(result: { count: number | null }) {
   return result.count ?? 0;
 }
@@ -106,7 +122,10 @@ export async function GET(request: NextRequest) {
     feedItems7dResult,
     reactions7dResult,
     activeFeedResult,
-    logsResult
+    logsResult,
+    groupsResult,
+    membersResult,
+    profilesResult
   ] = await Promise.all([
     context.admin.from("slim_groups").select("id", { count: "exact", head: true }),
     context.admin.from("slim_profiles").select("id", { count: "exact", head: true }),
@@ -137,7 +156,14 @@ export async function GET(request: NextRequest) {
       .select("user_id,recorded_on,weight_kg")
       .order("user_id", { ascending: true })
       .order("recorded_on", { ascending: true })
-      .limit(10000)
+      .limit(10000),
+    context.admin.from("slim_groups").select("id,name,owner_id").order("name", { ascending: true }),
+    context.admin
+      .from("slim_group_members")
+      .select("group_id,user_id")
+      .order("joined_at", { ascending: true })
+      .limit(20000),
+    context.admin.from("slim_profiles").select("id,email").limit(20000)
   ]);
 
   const firstError = [
@@ -149,7 +175,10 @@ export async function GET(request: NextRequest) {
     feedItems7dResult,
     reactions7dResult,
     activeFeedResult,
-    logsResult
+    logsResult,
+    groupsResult,
+    membersResult,
+    profilesResult
   ].find((result) => result.error)?.error;
 
   if (firstError) {
@@ -158,6 +187,35 @@ export async function GET(request: NextRequest) {
 
   const activeGroups = new Set((activeFeedResult.data ?? []).map((row) => row.group_id));
   const lossStats = totalLossFromUserLogs((logsResult.data ?? []) as WeightLogRow[]);
+  const profilesById = new Map(
+    ((profilesResult.data ?? []) as ProfileRow[]).map((profile) => [profile.id, profile])
+  );
+  const membersByGroup = new Map<string, MemberRow[]>();
+
+  for (const member of (membersResult.data ?? []) as MemberRow[]) {
+    const existing = membersByGroup.get(member.group_id) ?? [];
+    existing.push(member);
+    membersByGroup.set(member.group_id, existing);
+  }
+
+  const groups = ((groupsResult.data ?? []) as GroupRow[]).map((group) => {
+    const memberRows = membersByGroup.get(group.id) ?? [];
+    const memberEmails = Array.from(
+      new Set(
+        memberRows
+          .map((member) => profilesById.get(member.user_id)?.email?.trim() ?? null)
+          .filter((email): email is string => Boolean(email))
+      )
+    ).sort((left, right) => left.localeCompare(right));
+
+    return {
+      id: group.id,
+      name: group.name,
+      ownerEmail: profilesById.get(group.owner_id)?.email ?? null,
+      memberCount: memberRows.length,
+      memberEmails
+    };
+  });
 
   return NextResponse.json({
     generatedAt: new Date().toISOString(),
@@ -171,6 +229,7 @@ export async function GET(request: NextRequest) {
       activeGroupCount7d: activeGroups.size,
       feedItems7dCount: countValue(feedItems7dResult),
       reactions7dCount: countValue(reactions7dResult)
-    }
+    },
+    groups
   });
 }
