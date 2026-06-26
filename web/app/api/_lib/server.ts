@@ -21,6 +21,20 @@ export function jsonError(message: string, status = 400, code?: string) {
   return NextResponse.json({ error: message, code }, { status });
 }
 
+export function isStatusAdmin(email: string | null | undefined) {
+  const normalizedEmail = email?.trim().toLowerCase();
+  if (!normalizedEmail) {
+    return false;
+  }
+
+  const allowedEmails = (process.env.STATUS_ADMIN_EMAILS || "haopengz@gmail.com")
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+
+  return allowedEmails.includes(normalizedEmail);
+}
+
 export function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }

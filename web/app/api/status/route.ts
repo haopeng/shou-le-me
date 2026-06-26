@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthContext, isAuthContext, jsonError, roundTenth, todayIso } from "../_lib/server";
+import {
+  getAuthContext,
+  isAuthContext,
+  isStatusAdmin,
+  jsonError,
+  roundTenth,
+  todayIso
+} from "../_lib/server";
 
 type WeightLogRow = {
   user_id: string;
@@ -81,6 +88,10 @@ export async function GET(request: NextRequest) {
   const context = await getAuthContext(request);
   if (!isAuthContext(context)) {
     return context;
+  }
+
+  if (!isStatusAdmin(context.user.email)) {
+    return jsonError("Status dashboard is private.", 403, "STATUS_FORBIDDEN");
   }
 
   const today = todayIso();

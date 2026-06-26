@@ -9,6 +9,7 @@ export type Profile = {
   nickname: string | null;
   avatarUrl: string | null;
   locale: Language | null;
+  isStatusAdmin?: boolean;
 };
 
 export type GroupSummary = {

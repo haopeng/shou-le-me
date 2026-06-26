@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cleanText, getAuthContext, isAuthContext, jsonError } from "../_lib/server";
+import { cleanText, getAuthContext, isAuthContext, isStatusAdmin, jsonError } from "../_lib/server";
 
 export async function GET(request: NextRequest) {
   const context = await getAuthContext(request);
@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
       fullName: data.full_name,
       nickname: data.nickname,
       avatarUrl: data.avatar_url,
-      locale: data.locale
+      locale: data.locale,
+      isStatusAdmin: isStatusAdmin(data.email)
     }
   });
 }
@@ -62,7 +63,8 @@ export async function PATCH(request: NextRequest) {
       fullName: data.full_name,
       nickname: data.nickname,
       avatarUrl: data.avatar_url,
-      locale: data.locale
+      locale: data.locale,
+      isStatusAdmin: isStatusAdmin(data.email)
     }
   });
 }
