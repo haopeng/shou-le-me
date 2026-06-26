@@ -95,6 +95,22 @@ export type PersonalDashboard = {
   highlights: PersonalHighlight[];
 };
 
+export type AppStatusDashboard = {
+  generatedAt: string;
+  stats: {
+    groupCount: number;
+    userCount: number;
+    membershipCount: number;
+    readyMemberCount: number;
+    totalUserLossKg: number;
+    usersWithProgressCount: number;
+    logsTodayCount: number;
+    activeGroupCount7d: number;
+    feedItems7dCount: number;
+    reactions7dCount: number;
+  };
+};
+
 export type ReactionUser = {
   userId: string;
   displayName: string;

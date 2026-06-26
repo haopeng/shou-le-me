@@ -39,6 +39,7 @@ import {
 } from "@/lib/i18n";
 import { hasSupabaseConfig, supabase, supabaseAnonKey, supabaseUrl } from "@/lib/supabaseClient";
 import type {
+  AppStatusDashboard,
   FeedItem,
   GroupDashboard,
   GroupSummary,
@@ -56,7 +57,7 @@ type SlimYetGroupAppProps = {
   inviteCode?: string;
 };
 
-type ActiveView = "personal" | "group";
+type ActiveView = "status" | "personal" | "group";
 
 type LogFormState = {
   weight: string;
@@ -152,7 +153,7 @@ function writeSelectionUrl({
 }: {
   language: Language;
   inviteCode?: string;
-  view?: "me";
+  view?: "status" | "me";
   replace?: boolean;
 }) {
   if (typeof window === "undefined") {
@@ -166,8 +167,8 @@ function writeSelectionUrl({
   if (inviteCode) {
     url.searchParams.set("group", inviteCode);
     url.searchParams.delete("view");
-  } else if (view === "me") {
-    url.searchParams.set("view", "me");
+  } else if (view) {
+    url.searchParams.set("view", view);
     url.searchParams.delete("group");
   }
 
@@ -545,6 +546,104 @@ function LogWeightForm({
         </button>
       </div>
     </form>
+  );
+}
+
+function StatusDashboardView({
+  dashboard,
+  unit,
+  language
+}: {
+  dashboard: AppStatusDashboard | null;
+  unit: WeightUnit;
+  language: Language;
+}) {
+  const t = copy[language];
+
+  if (!dashboard) {
+    return (
+      <section className="empty-workspace">
+        <Image src="/brand/thermal-jewel.png" alt="" width={104} height={104} />
+        <h2>{t.loading}</h2>
+      </section>
+    );
+  }
+
+  const stats = dashboard.stats;
+  const totalLoss = `${formatNumber(toDisplayWeight(stats.totalUserLossKg, unit))} ${t[unit]}`;
+
+  return (
+    <>
+      <section className="personal-hero status-hero">
+        <div>
+          <p className="eyebrow">{t.privacySafeStatus}</p>
+          <h2>{t.statusDashboard}</h2>
+          <p>{t.statusDashboardHint}</p>
+        </div>
+        <div className="privacy-badge">
+          <ShieldCheck size={17} />
+          <span>{t.privacySafeStatus}</span>
+        </div>
+      </section>
+
+      <section className="score-strip status-score-strip">
+        <div className="score-card hot">
+          <Flame size={19} />
+          <span>{t.totalUserLoss}</span>
+          <strong>{totalLoss}</strong>
+        </div>
+        <div className="score-card">
+          <Users size={19} />
+          <span>{t.totalGroups}</span>
+          <strong>{formatNumber(stats.groupCount, 0)}</strong>
+        </div>
+        <div className="score-card">
+          <UserRound size={19} />
+          <span>{t.allUsers}</span>
+          <strong>{formatNumber(stats.userCount, 0)}</strong>
+        </div>
+        <div className="score-card cool">
+          <ShieldCheck size={19} />
+          <span>{t.readyMembers}</span>
+          <strong>{formatNumber(stats.readyMemberCount, 0)}</strong>
+        </div>
+        <div className="score-card">
+          <CalendarDays size={19} />
+          <span>{t.loggedToday}</span>
+          <strong>{formatNumber(stats.logsTodayCount, 0)}</strong>
+        </div>
+        <div className="score-card">
+          <Sparkles size={19} />
+          <span>{t.cheersThisWeek}</span>
+          <strong>{formatNumber(stats.reactions7dCount, 0)}</strong>
+        </div>
+      </section>
+
+      <section className="panel status-detail-panel">
+        <div className="panel-title">
+          <Gauge size={18} />
+          <span>{t.statusDashboard}</span>
+        </div>
+        <div className="status-detail-grid">
+          <div>
+            <span>{t.memberships}</span>
+            <strong>{formatNumber(stats.membershipCount, 0)}</strong>
+          </div>
+          <div>
+            <span>{t.usersWithProgress}</span>
+            <strong>{formatNumber(stats.usersWithProgressCount, 0)}</strong>
+          </div>
+          <div>
+            <span>{t.activeGroupsWeek}</span>
+            <strong>{formatNumber(stats.activeGroupCount7d, 0)}</strong>
+          </div>
+          <div>
+            <span>{t.groupUpdatesWeek}</span>
+            <strong>{formatNumber(stats.feedItems7dCount, 0)}</strong>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }
 
@@ -2481,7 +2580,8 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [dashboard, setDashboard] = useState<GroupDashboard | null>(null);
   const [personalDashboard, setPersonalDashboard] = useState<PersonalDashboard | null>(null);
-  const [activeView, setActiveView] = useState<ActiveView>("personal");
+  const [statusDashboard, setStatusDashboard] = useState<AppStatusDashboard | null>(null);
+  const [activeView, setActiveView] = useState<ActiveView>("status");
   const [selectedMember, setSelectedMember] = useState<GroupDashboard["members"][number] | null>(
     null
   );
@@ -2620,14 +2720,22 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     }
 
     setSelectedGroupId((current) => current ?? groupsPayload.groups[0]?.id ?? null);
-    if (getUrlViewToken() === "me") {
+    const viewToken = getUrlViewToken();
+    if (viewToken === "me") {
       setActiveView("personal");
+    } else {
+      setActiveView("status");
     }
   }
 
   async function loadPersonalDashboard() {
     const payload = await apiFetch<PersonalDashboard>("/api/me/dashboard");
     setPersonalDashboard(payload);
+  }
+
+  async function loadStatusDashboard() {
+    const payload = await apiFetch<AppStatusDashboard>("/api/status");
+    setStatusDashboard(payload);
   }
 
   async function loadDashboard(groupId = selectedGroupId) {
@@ -2646,6 +2754,12 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     writeSelectionUrl({ language, view: "me", replace });
   }
 
+  function showStatusView(replace = false) {
+    setSelectedMember(null);
+    setActiveView("status");
+    writeSelectionUrl({ language, view: "status", replace });
+  }
+
   function showGroupView(group: Pick<GroupSummary, "id" | "inviteCode">, replace = false) {
     setSelectedMember(null);
     setSelectedGroupId(group.id);
@@ -2659,12 +2773,13 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       setGroups([]);
       setDashboard(null);
       setPersonalDashboard(null);
-      setActiveView("personal");
+      setStatusDashboard(null);
+      setActiveView("status");
       return;
     }
 
     run("load", async () => {
-      await Promise.all([loadMeAndGroups(), loadPersonalDashboard()]);
+      await Promise.all([loadMeAndGroups(), loadPersonalDashboard(), loadStatusDashboard()]);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session]);
@@ -2693,8 +2808,11 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
         return;
       }
 
-      if (getUrlViewToken() === "me" || !getUrlGroupToken()) {
+      const viewToken = getUrlViewToken();
+      if (viewToken === "me") {
         setActiveView("personal");
+      } else if (viewToken === "status" || !getUrlGroupToken()) {
+        setActiveView("status");
       }
     }
 
@@ -2716,6 +2834,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       showGroupView({ id: payload.groupId, inviteCode: payload.inviteCode }, true);
       await loadMeAndGroups();
       await loadDashboard(payload.groupId);
+      await loadStatusDashboard();
       setMessage(t.joined);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2875,6 +2994,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       showGroupView(payload.group);
       await loadMeAndGroups();
       await loadDashboard(payload.group.id);
+      await loadStatusDashboard();
     });
   }
 
@@ -2888,6 +3008,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       showGroupView({ id: payload.groupId, inviteCode: payload.inviteCode });
       await loadMeAndGroups();
       await loadDashboard(payload.groupId);
+      await loadStatusDashboard();
     });
   }
 
@@ -2908,7 +3029,12 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
         method: "PATCH",
         body: JSON.stringify({ baseWeightKg, baseDate: baseForm.date })
       });
-      await Promise.all([loadMeAndGroups(), loadPersonalDashboard(), loadDashboard(selectedGroupId)]);
+      await Promise.all([
+        loadMeAndGroups(),
+        loadPersonalDashboard(),
+        loadStatusDashboard(),
+        loadDashboard(selectedGroupId)
+      ]);
     });
   }
 
@@ -2929,6 +3055,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       setLogForm((current) => ({ ...current, note: "" }));
       await Promise.all([
         loadPersonalDashboard(),
+        loadStatusDashboard(),
         loadMeAndGroups(),
         selectedGroupId ? loadDashboard(selectedGroupId) : Promise.resolve()
       ]);
@@ -2943,6 +3070,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       });
       await Promise.all([
         loadPersonalDashboard(),
+        loadStatusDashboard(),
         loadMeAndGroups(),
         selectedGroupId ? loadDashboard(selectedGroupId) : Promise.resolve()
       ]);
@@ -2959,7 +3087,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
         method: "POST",
         body: JSON.stringify({ reaction })
       });
-      await loadDashboard(selectedGroupId);
+      await Promise.all([loadDashboard(selectedGroupId), loadStatusDashboard()]);
     });
   }
 
@@ -3311,6 +3439,17 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
           <nav className="group-tabs" aria-label={t.groups}>
             <button
               type="button"
+              className={activeView === "status" ? "active status-tab" : "status-tab"}
+              onClick={() => showStatusView()}
+            >
+              <span>
+                <Gauge size={15} />
+                {t.statusTab}
+              </span>
+              <small>{t.privacySafeStatus}</small>
+            </button>
+            <button
+              type="button"
               className={activeView === "personal" ? "active personal-tab" : "personal-tab"}
               onClick={() => showPersonalView()}
             >
@@ -3339,7 +3478,13 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
             )}
           </nav>
 
-          {activeView === "personal" ? (
+          {activeView === "status" ? (
+            <StatusDashboardView
+              dashboard={statusDashboard}
+              language={language}
+              unit={unit}
+            />
+          ) : activeView === "personal" ? (
             <PersonalDashboardView
               busy={busy}
               dashboard={personalDashboard}
