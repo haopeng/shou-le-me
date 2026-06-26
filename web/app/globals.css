@@ -903,6 +903,10 @@ label span {
   gap: 12px;
 }
 
+.top5-grid.groups-only {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .top5-row {
   display: grid;
   grid-template-columns: 38px minmax(150px, 1fr) minmax(92px, 120px) minmax(128px, auto);
@@ -1266,10 +1270,6 @@ label span {
 
 .leader-row.me {
   box-shadow: inset 4px 0 0 var(--aqua);
-}
-
-.public-user-row {
-  cursor: default;
 }
 
 .rank-cell {

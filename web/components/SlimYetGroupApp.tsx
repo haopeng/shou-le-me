@@ -788,13 +788,13 @@ function Top5DashboardView({
           <strong>{formatNumber(dashboard.topGroups.length, 0)}</strong>
         </div>
         <div className="score-card cool">
-          <UserRound size={19} />
-          <span>{t.topUsers}</span>
-          <strong>{formatNumber(dashboard.topUsers.length, 0)}</strong>
+          <Users size={19} />
+          <span>{t.totalGroups}</span>
+          <strong>{formatNumber(dashboard.stats.groupCount, 0)}</strong>
         </div>
       </section>
 
-      <div className="top5-grid">
+      <div className="top5-grid groups-only">
         <section className="panel leaderboard-panel">
           <div className="panel-title">
             <Trophy size={18} />
@@ -846,42 +846,6 @@ function Top5DashboardView({
               })
             ) : (
               <div className="empty-state compact-empty">{t.noGroups}</div>
-            )}
-          </div>
-        </section>
-
-        <section className="panel leaderboard-panel">
-          <div className="panel-title">
-            <Medal size={18} />
-            <span>{t.topUsers}</span>
-          </div>
-          <div className="leaderboard">
-            {dashboard.topUsers.length ? (
-              dashboard.topUsers.map((user, index) => (
-                <article className="leader-row public-user-row" key={user.userId}>
-                  <div className="rank-cell">{index + 1}</div>
-                  <Avatar name={user.displayName} url={user.avatarUrl} />
-                  <div className="leader-main">
-                    <div className="leader-name">
-                      <strong>{user.displayName}</strong>
-                      {index === 0 && <span>{t.topUser}</span>}
-                    </div>
-                    <div className="badge-row">
-                      <small>
-                        {user.loggedDays} {t.loggedDays}
-                      </small>
-                    </div>
-                  </div>
-                  <div className="delta-cell">
-                    <strong className="good">
-                      {formatNumber(toDisplayWeight(user.lossKg, unit))} {t[unit]}
-                    </strong>
-                    <span>{t.down}</span>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <div className="empty-state compact-empty">{t.noLogs}</div>
             )}
           </div>
         </section>

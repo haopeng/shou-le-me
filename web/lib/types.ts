@@ -34,23 +34,13 @@ export type PublicTopGroup = {
   totalLossKg: number;
 };
 
-export type PublicTopUser = {
-  userId: string;
-  displayName: string;
-  avatarUrl: string | null;
-  lossKg: number;
-  loggedDays: number;
-};
-
 export type PublicDashboard = {
   generatedAt: string;
   stats: {
     groupCount: number;
-    userCount: number;
     totalLossKg: number;
   };
   topGroups: PublicTopGroup[];
-  topUsers: PublicTopUser[];
 };
 
 export type SparkPoint = {
