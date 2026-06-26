@@ -28,6 +28,7 @@ export type WeightLogWriteResult = {
   ok: true;
   updatedGroupCount: number;
   readyGroupCount: number;
+  appliedGroupCount: number;
   feedCount: number;
   latestChanged: boolean;
   latestRecordedOn: string | null;
@@ -57,6 +58,13 @@ function latestRowsDiffer(before: WeightLogRow | null, after: WeightLogRow | nul
     return true;
   }
   return before.recorded_on !== after.recorded_on || Number(before.weight_kg) !== Number(after.weight_kg);
+}
+
+function membershipAppliesToDate(membership: MembershipRow, recordedOn: string) {
+  return (
+    numberOrNull(membership.base_weight_kg) !== null &&
+    (!membership.base_date || recordedOn >= membership.base_date)
+  );
 }
 
 async function latestUserLog(admin: SupabaseClient, userId: string) {
@@ -206,6 +214,9 @@ export async function saveUserWeightLog({
     ok: true,
     updatedGroupCount: memberships.length,
     readyGroupCount: memberships.filter((membership) => membership.base_weight_kg !== null).length,
+    appliedGroupCount: memberships.filter((membership) =>
+      membershipAppliesToDate(membership, recordedOn)
+    ).length,
     feedCount,
     latestChanged: latestRowsDiffer(beforeLatest, afterLatest),
     latestRecordedOn: afterLatest?.recorded_on ?? null
@@ -254,6 +265,9 @@ export async function deleteUserWeightLog({
     ok: true,
     updatedGroupCount: memberships.length,
     readyGroupCount: memberships.filter((membership) => membership.base_weight_kg !== null).length,
+    appliedGroupCount: memberships.filter((membership) =>
+      membershipAppliesToDate(membership, recordedOn)
+    ).length,
     feedCount,
     latestChanged: latestRowsDiffer(beforeLatest, afterLatest),
     latestRecordedOn: afterLatest?.recorded_on ?? null

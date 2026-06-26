@@ -76,7 +76,9 @@ const KG_PER_LB = 0.45359237;
 const reactionTypes: ReactionType[] = ["like", "heart", "care", "thumbs_down"];
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  const date = new Date();
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 10);
 }
 
 function toDisplayWeight(kg: number, unit: WeightUnit) {
@@ -2960,6 +2962,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
 
       const response = await fetch(path, {
         ...init,
+        cache: "no-store",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
@@ -3436,10 +3439,13 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     }
 
     await run("log", async () => {
-      const payload = await apiFetch<{ readyGroupCount: number }>("/api/me/logs", {
-        method: "POST",
-        body: JSON.stringify({ weightKg, recordedOn: logForm.date, note: logForm.note })
-      });
+      const payload = await apiFetch<{ appliedGroupCount?: number; readyGroupCount: number }>(
+        "/api/me/logs",
+        {
+          method: "POST",
+          body: JSON.stringify({ weightKg, recordedOn: logForm.date, note: logForm.note })
+        }
+      );
       setLogForm((current) => ({ ...current, note: "" }));
       const loadedProfile = await loadMeAndGroups();
       await Promise.all([
@@ -3448,7 +3454,12 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
         loadStatusDashboardIfAllowed(loadedProfile),
         selectedGroupId ? loadDashboard(selectedGroupId) : Promise.resolve()
       ]);
-      setMessage(t.logSavedAll.replace("{count}", String(payload.readyGroupCount)));
+      const appliedGroupCount = payload.appliedGroupCount ?? payload.readyGroupCount;
+      setMessage(
+        appliedGroupCount > 0
+          ? t.logSavedAll.replace("{count}", String(appliedGroupCount))
+          : t.logSavedPrivate
+      );
     });
   }
 
