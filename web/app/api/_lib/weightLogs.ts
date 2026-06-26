@@ -5,6 +5,7 @@ type MembershipRow = {
   id: string;
   group_id: string;
   base_weight_kg: number | string | null;
+  base_date: string | null;
 };
 
 type WeightLogRow = {
@@ -78,7 +79,7 @@ async function latestUserLog(admin: SupabaseClient, userId: string) {
 async function userMemberships(admin: SupabaseClient, userId: string) {
   const { data, error } = await admin
     .from("slim_group_members")
-    .select("id,group_id,base_weight_kg")
+    .select("id,group_id,base_weight_kg,base_date")
     .eq("user_id", userId);
 
   if (error) {
@@ -114,8 +115,18 @@ async function writeDeltaFeedForLatestChange({
         return null;
       }
 
+      const afterInScope =
+        !membership.base_date || afterLatest.recorded_on >= membership.base_date;
+      if (!afterInScope) {
+        return null;
+      }
+
+      const beforeInScope =
+        beforeLatest && (!membership.base_date || beforeLatest.recorded_on >= membership.base_date)
+          ? beforeLatest
+          : null;
       const previousDelta =
-        beforeLatest === null ? null : roundTenth(Number(beforeLatest.weight_kg) - baseWeight);
+        beforeInScope === null ? null : roundTenth(Number(beforeInScope.weight_kg) - baseWeight);
       const newDelta = roundTenth(Number(afterLatest.weight_kg) - baseWeight);
 
       if (previousDelta === newDelta) {

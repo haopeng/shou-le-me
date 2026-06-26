@@ -11,6 +11,7 @@ type MemberRow = {
   group_id: string;
   user_id: string;
   base_weight_kg: number | string | null;
+  base_date: string | null;
 };
 
 type ProfileRow = {
@@ -46,7 +47,7 @@ export async function GET() {
   const admin = getAdminClient();
   const [groupsResult, membersResult, profilesResult, logsResult] = await Promise.all([
     admin.from("slim_groups").select("id,name,description").limit(1000),
-    admin.from("slim_group_members").select("group_id,user_id,base_weight_kg").limit(20000),
+    admin.from("slim_group_members").select("group_id,user_id,base_weight_kg,base_date").limit(20000),
     admin.from("slim_profiles").select("id,full_name,nickname,avatar_url").limit(20000),
     admin
       .from("slim_weight_logs")
@@ -79,12 +80,17 @@ export async function GET() {
       count: number;
     }
   >();
+  const logRowsByUser = new Map<string, WeightLogRow[]>();
 
   for (const log of (logsResult.data ?? []) as WeightLogRow[]) {
     const weight = Number(log.weight_kg);
     if (!Number.isFinite(weight)) {
       continue;
     }
+
+    const existingRows = logRowsByUser.get(log.user_id) ?? [];
+    existingRows.push(log);
+    logRowsByUser.set(log.user_id, existingRows);
 
     const current = logsByUser.get(log.user_id);
     if (!current) {
@@ -124,13 +130,17 @@ export async function GET() {
 
       for (const member of groupMembers) {
         const baseWeight = numberOrNull(member.base_weight_kg);
-        const latestLog = logsByUser.get(member.user_id);
+        const memberLogs = logRowsByUser.get(member.user_id) ?? [];
+        const scopedLogs = member.base_date
+          ? memberLogs.filter((log) => log.recorded_on >= member.base_date!)
+          : memberLogs;
+        const latestLog = scopedLogs.at(-1) ?? null;
         if (baseWeight === null || !latestLog) {
           continue;
         }
 
         readyCount += 1;
-        totalLossKg += Math.max(0, baseWeight - latestLog.latestWeight);
+        totalLossKg += Math.max(0, baseWeight - Number(latestLog.weight_kg));
       }
 
       return {

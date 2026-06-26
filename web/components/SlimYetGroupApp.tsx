@@ -1838,12 +1838,18 @@ function buildLocalDashboard(state: LocalPreviewState, language: Language): Grou
       : member
   );
   const computed = normalizedMembers.map((member) => {
-    const logs = member.logs
+    const allLogs = member.logs
       .slice()
       .sort((left, right) => left.recordedOn.localeCompare(right.recordedOn));
+    const baseWeight = member.baseWeightKg;
+    const logs =
+      baseWeight === null
+        ? []
+        : member.baseDate
+          ? allLogs.filter((log) => log.recordedOn >= member.baseDate!)
+          : allLogs;
     const latest = logs.at(-1) ?? null;
     const previous = logs.length >= 2 ? logs.at(-2) : null;
-    const baseWeight = member.baseWeightKg;
     const deltaKg = baseWeight !== null && latest ? roundOne(latest.weightKg - baseWeight) : null;
     const previousDeltaKg =
       baseWeight !== null && previous ? roundOne(previous.weightKg - baseWeight) : null;

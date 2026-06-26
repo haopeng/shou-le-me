@@ -383,9 +383,15 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const computed = memberRows.map((member) => {
     const logs = logsByUser.get(member.user_id) ?? [];
     const baseWeight = numberOrNull(member.base_weight_kg);
-    const latestLog = logs.at(-1) ?? null;
+    const scopedLogs =
+      baseWeight === null
+        ? []
+        : member.base_date
+          ? logs.filter((log) => log.recorded_on >= member.base_date!)
+          : logs;
+    const latestLog = scopedLogs.at(-1) ?? null;
     const latestWeight = latestLog ? Number(latestLog.weight_kg) : null;
-    const previousLog = logs.length >= 2 ? logs.at(-2) : null;
+    const previousLog = scopedLogs.length >= 2 ? scopedLogs.at(-2) : null;
     const previousWeight = previousLog ? Number(previousLog.weight_kg) : null;
     const deltaKg =
       baseWeight !== null && latestWeight !== null ? roundTenth(latestWeight - baseWeight) : null;
@@ -396,7 +402,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     return {
       member,
-      logs,
+      logs: scopedLogs,
       baseWeight,
       latestWeight,
       deltaKg,
