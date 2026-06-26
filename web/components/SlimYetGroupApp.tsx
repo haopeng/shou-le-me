@@ -210,11 +210,16 @@ function SharedTrendChart({
   ).sort((left, right) => left.localeCompare(right));
   const dateIndex = new Map(dates.map((date, index) => [date, index]));
   const values = plottedMembers.flatMap((member) => member.sparkline.map((point) => point.deltaKg));
-  const rawMin = Math.min(...values, -0.5);
-  const rawMax = Math.max(...values, 0.5);
-  const padding = Math.max(0.3, (rawMax - rawMin) * 0.14);
-  const min = Math.min(rawMin - padding, 0);
-  const max = Math.max(rawMax + padding, 0);
+  const rawMin = Math.min(...values, 0);
+  const rawMax = Math.max(...values, 0);
+  const rawSpan = rawMax - rawMin;
+  const visualSpan = Math.max(rawSpan, 0.58);
+  const center = (rawMin + rawMax) / 2;
+  const paddedMin = center - visualSpan / 2;
+  const paddedMax = center + visualSpan / 2;
+  const padding = Math.max(0.06, visualSpan * 0.08);
+  const min = Math.min(paddedMin - padding, rawMin - padding, 0);
+  const max = Math.max(paddedMax + padding, rawMax + padding, 0);
   const range = max - min || 1;
   const chartWidth = width - padLeft - padRight;
   const chartHeight = height - padTop - padBottom;
@@ -224,10 +229,26 @@ function SharedTrendChart({
   };
   const yFor = (value: number) => padTop + ((max - value) / range) * chartHeight;
   const axisValues = Array.from(new Set([roundOne(max), 0, roundOne(min)]));
+  const zeroY = yFor(0);
 
   return (
     <div className="shared-trend-wrap">
       <svg className="shared-trend-plot" viewBox={`0 0 ${width} ${height}`} role="img">
+        <defs>
+          <linearGradient id="shared-down-zone" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#24c6bc" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="#24c6bc" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {zeroY < height - padBottom && (
+          <rect
+            className="shared-trend-down-zone"
+            x={padLeft}
+            y={zeroY}
+            width={chartWidth}
+            height={height - padBottom - zeroY}
+          />
+        )}
         {axisValues.map((value) => (
           <g key={value}>
             <path
@@ -266,16 +287,30 @@ function SharedTrendChart({
                   style={{ stroke: color }}
                 />
               ) : (
-                <path
-                  d={path}
-                  className={classNames("shared-trend-path", member.rank === 1 && "winner")}
-                  style={{ stroke: color }}
-                />
+                <>
+                  <path
+                    d={path}
+                    className={classNames("shared-trend-glow", member.rank === 1 && "winner")}
+                    style={{ stroke: color }}
+                  />
+                  <path
+                    d={path}
+                    className={classNames("shared-trend-path", member.rank === 1 && "winner")}
+                    style={{ stroke: color }}
+                  />
+                </>
               )}
               <circle
                 cx={xFor(latest.date)}
                 cy={yFor(latest.deltaKg)}
-                r={isSinglePoint ? 8 : member.rank === 1 ? 7 : 5}
+                r={isSinglePoint ? 13 : member.rank === 1 ? 13 : 10}
+                className="shared-trend-dot-halo"
+                style={{ fill: color }}
+              />
+              <circle
+                cx={xFor(latest.date)}
+                cy={yFor(latest.deltaKg)}
+                r={isSinglePoint ? 9 : member.rank === 1 ? 8 : 6}
                 className="shared-trend-dot"
                 style={{ fill: color }}
               />
@@ -325,9 +360,15 @@ function buildWeightChartGeometry(values: number[], width: number, height: numbe
   const low = Math.min(...values);
   const high = Math.max(...values);
   const average = values.reduce((sum, value) => sum + value, 0) / values.length;
-  const range = Math.max(1, high - low);
+  const rawRange = high - low;
+  const visualRange = Math.max(rawRange, values.length === 1 ? 1 : 0.58);
+  const padding = Math.max(0.05, visualRange * 0.08);
+  const center = (high + low) / 2;
+  const domainLow = center - visualRange / 2 - padding;
+  const domainHigh = center + visualRange / 2 + padding;
+  const range = domainHigh - domainLow || 1;
   const yFor = (value: number) =>
-    height - padY - ((value - low) / range) * (height - padY * 2);
+    height - padY - ((value - domainLow) / range) * (height - padY * 2);
   const xFor = (index: number) =>
     values.length === 1
       ? width / 2
@@ -345,7 +386,7 @@ function buildWeightChartGeometry(values: number[], width: number, height: numbe
           height - padY
         } Z`;
 
-  return { low, high, average, yFor, xFor, path, fillPath };
+  return { low, high, average, yFor, xFor, path, fillPath, domainLow, domainHigh };
 }
 
 function formatDeltaText(deltaKg: number, unit: WeightUnit, language: Language) {
@@ -465,7 +506,10 @@ function PersonalWeightChart({
           )}`}
         />
         {values.length > 1 ? (
-          <path className="own-chart-path" d={path} />
+          <>
+            <path className="own-chart-path-glow" d={path} />
+            <path className="own-chart-path" d={path} />
+          </>
         ) : (
           <path
             className="own-chart-single-guide"
@@ -473,6 +517,12 @@ function PersonalWeightChart({
           />
         )}
         <circle className="own-chart-low" cx={xFor(lowIndex)} cy={yFor(low)} r="6" />
+        <circle
+          className="own-chart-last-halo"
+          cx={xFor(values.length - 1)}
+          cy={yFor(last)}
+          r="13"
+        />
         <circle className="own-chart-last" cx={xFor(values.length - 1)} cy={yFor(last)} r="7" />
         <text x={padX} y={22} className="chart-label">
           {formatNumber(high)} {t[unit]}

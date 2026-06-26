@@ -1084,16 +1084,34 @@ label span {
   stroke-dasharray: 5 7;
 }
 
-.shared-trend-path {
+.shared-trend-down-zone {
+  fill: url(#shared-down-zone);
+}
+
+.shared-trend-glow {
   fill: none;
-  stroke-width: 5;
+  stroke-width: 14;
   stroke-linecap: round;
   stroke-linejoin: round;
-  filter: drop-shadow(0 8px 10px rgba(31, 41, 51, 0.08));
+  opacity: 0.16;
+  filter: blur(3px);
+}
+
+.shared-trend-glow.winner {
+  stroke-width: 18;
+  opacity: 0.22;
+}
+
+.shared-trend-path {
+  fill: none;
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 9px 12px rgba(31, 41, 51, 0.13));
 }
 
 .shared-trend-path.winner {
-  stroke-width: 6;
+  stroke-width: 9;
 }
 
 .shared-trend-single-guide {
@@ -1107,6 +1125,10 @@ label span {
 .shared-trend-dot {
   stroke: #fff;
   stroke-width: 4;
+}
+
+.shared-trend-dot-halo {
+  opacity: 0.18;
 }
 
 .shared-trend-label,
@@ -1607,9 +1629,20 @@ label span {
 .own-chart-path {
   fill: none;
   stroke: #24c6bc;
-  stroke-width: 6;
+  stroke-width: 8;
   stroke-linecap: round;
   stroke-linejoin: round;
+  filter: drop-shadow(0 10px 14px rgba(36, 198, 188, 0.22));
+}
+
+.own-chart-path-glow {
+  fill: none;
+  stroke: #24c6bc;
+  stroke-width: 17;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.16;
+  filter: blur(3px);
 }
 
 .own-chart-average {
@@ -1637,6 +1670,11 @@ label span {
   fill: #ff563f;
   stroke: #fff;
   stroke-width: 4;
+}
+
+.own-chart-last-halo {
+  fill: #ff563f;
+  opacity: 0.18;
 }
 
 .chart-label {
