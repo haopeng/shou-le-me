@@ -4482,7 +4482,6 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
         onClick={handleQuickLog}
       >
         <Plus size={22} />
-        <span>{t.quickLog}</span>
       </button>
 
       {selectedMember && (
