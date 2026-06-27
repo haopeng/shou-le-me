@@ -968,6 +968,55 @@ label span {
   grid-template-columns: minmax(94px, 0.8fr) minmax(130px, 0.85fr) minmax(130px, 1fr) auto;
 }
 
+.base-adjust-panel {
+  align-self: start;
+  border-style: dashed;
+  background: rgba(255, 255, 255, 0.58);
+  box-shadow: 0 10px 24px rgba(31, 41, 51, 0.05);
+}
+
+.base-adjust-panel summary {
+  display: grid;
+  gap: 5px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.base-adjust-panel summary::-webkit-details-marker {
+  display: none;
+}
+
+.base-adjust-panel summary span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  font-weight: 950;
+}
+
+.base-adjust-panel summary small {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 780;
+  line-height: 1.35;
+}
+
+.base-adjust-panel[open] summary {
+  padding-bottom: 12px;
+}
+
+.base-adjust-form {
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid rgba(31, 41, 51, 0.08);
+  padding-top: 12px;
+}
+
+.base-adjust-panel .inline-fields,
+.action-panel:last-child.base-adjust-panel .inline-fields {
+  grid-template-columns: minmax(100px, 1fr) minmax(130px, 1fr) auto;
+}
+
 .panel-hint {
   margin: -6px 0 12px;
 }
@@ -1402,6 +1451,81 @@ label span {
   font-size: clamp(1.7rem, 5vw, 2.7rem);
   line-height: 1;
   overflow-wrap: anywhere;
+}
+
+.base-confirm-modal {
+  width: min(540px, 100%);
+}
+
+.base-confirm-head {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding-right: 40px;
+}
+
+.base-confirm-head > svg {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  color: var(--hot);
+  background: rgba(255, 86, 63, 0.1);
+  padding: 9px;
+}
+
+.base-confirm-head h2 {
+  margin: 0;
+  color: var(--ink);
+  font-size: clamp(1.45rem, 4vw, 2.25rem);
+  line-height: 1.05;
+}
+
+.base-confirm-copy {
+  margin: 14px 0 0;
+  color: var(--muted);
+  font-weight: 790;
+  line-height: 1.42;
+}
+
+.base-confirm-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.base-confirm-summary div {
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(31, 41, 51, 0.08);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 12px;
+}
+
+.base-confirm-summary span {
+  color: var(--muted);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.base-confirm-summary strong {
+  color: var(--ink);
+  font-weight: 950;
+}
+
+.base-confirm-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.base-confirm-actions button {
+  min-height: 46px;
 }
 
 .member-photo-button {
@@ -1983,7 +2107,9 @@ label span {
 
   .inline-fields,
   .action-panel:last-child .inline-fields,
-  .log-action-panel .inline-fields {
+  .log-action-panel .inline-fields,
+  .base-adjust-panel .inline-fields,
+  .action-panel:last-child.base-adjust-panel .inline-fields {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -2026,7 +2152,11 @@ label span {
   .setup-points,
   .inline-fields,
   .action-panel:last-child .inline-fields,
-  .log-action-panel .inline-fields {
+  .log-action-panel .inline-fields,
+  .base-adjust-panel .inline-fields,
+  .action-panel:last-child.base-adjust-panel .inline-fields,
+  .base-confirm-summary,
+  .base-confirm-actions {
     grid-template-columns: 1fr;
   }
 

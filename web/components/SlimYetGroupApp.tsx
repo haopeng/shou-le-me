@@ -66,6 +66,11 @@ type LogFormState = {
   note: string;
 };
 
+type PendingBaseAction = {
+  weightKg: number;
+  date: string;
+};
+
 type SupabaseAuthSettings = {
   external?: {
     google?: boolean;
@@ -1414,6 +1419,105 @@ function Avatar({ name, url }: { name: string; url: string | null }) {
   }
 
   return <div className="avatar fallback-avatar">{initials(name) || "SY"}</div>;
+}
+
+function BaseActionConfirmModal({
+  action,
+  unit,
+  language,
+  busy,
+  onClose,
+  onUpdateBase,
+  onSaveAsLog
+}: {
+  action: PendingBaseAction;
+  unit: WeightUnit;
+  language: Language;
+  busy: string | null;
+  onClose: () => void;
+  onUpdateBase: () => void;
+  onSaveAsLog: () => void;
+}) {
+  const t = copy[language];
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="member-modal-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <section
+        aria-labelledby="base-confirm-title"
+        aria-modal="true"
+        className="member-modal base-confirm-modal"
+        role="dialog"
+      >
+        <button
+          aria-label={t.close}
+          className="icon-button ghost member-modal-close"
+          onClick={onClose}
+          type="button"
+        >
+          <X size={18} />
+        </button>
+
+        <div className="base-confirm-head">
+          <ShieldCheck size={22} />
+          <div>
+            <p className="eyebrow">{t.baseAlreadySet}</p>
+            <h2 id="base-confirm-title">{t.confirmBaseTitle}</h2>
+          </div>
+        </div>
+        <p className="base-confirm-copy">{t.confirmBaseBody}</p>
+        <div className="base-confirm-summary">
+          <div>
+            <span>{t.weight}</span>
+            <strong>
+              {formatNumber(toDisplayWeight(action.weightKg, unit))} {t[unit]}
+            </strong>
+          </div>
+          <div>
+            <span>{t.today}</span>
+            <strong>{action.date}</strong>
+          </div>
+        </div>
+        <div className="base-confirm-actions">
+          <button
+            className="secondary-button"
+            disabled={busy === "log"}
+            type="button"
+            onClick={onSaveAsLog}
+          >
+            <Weight size={17} />
+            {t.saveAsWeightLog}
+          </button>
+          <button
+            className="primary-button"
+            disabled={busy === "base"}
+            type="button"
+            onClick={onUpdateBase}
+          >
+            <ShieldCheck size={17} />
+            {t.updateBase}
+          </button>
+        </div>
+      </section>
+    </div>
+  );
 }
 
 function MemberProfileModal({
@@ -2878,6 +2982,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   const [groupForm, setGroupForm] = useState({ name: "", description: "" });
   const [joinCode, setJoinCode] = useState(inviteCode ?? "");
   const [baseForm, setBaseForm] = useState({ weight: "", date: todayIso() });
+  const [pendingBaseAction, setPendingBaseAction] = useState<PendingBaseAction | null>(null);
   const [logForm, setLogForm] = useState({ weight: "", date: todayIso(), note: "" });
   const [handledInvite, setHandledInvite] = useState<string | null>(null);
   const [origin, setOrigin] = useState("https://shou-le-me.vercel.app");
@@ -3402,6 +3507,59 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     });
   }
 
+  async function refreshAfterWeightChange(groupId = selectedGroupId) {
+    const loadedProfile = await loadMeAndGroups();
+    await Promise.all([
+      loadPublicDashboard(),
+      loadPersonalDashboard(),
+      loadStatusDashboardIfAllowed(loadedProfile),
+      groupId ? loadDashboard(groupId) : Promise.resolve()
+    ]);
+  }
+
+  async function updatePrivateBase(weightKg: number, baseDate: string) {
+    if (!selectedGroupId) {
+      return;
+    }
+
+    await apiFetch(`/api/groups/${selectedGroupId}/base`, {
+      method: "PATCH",
+      body: JSON.stringify({ baseWeightKg: weightKg, baseDate })
+    });
+    await refreshAfterWeightChange(selectedGroupId);
+    setMessage(t.baseUpdated);
+  }
+
+  async function saveWeightRecord({
+    weightKg,
+    recordedOn,
+    note,
+    clearLogForm = false
+  }: {
+    weightKg: number;
+    recordedOn: string;
+    note: string;
+    clearLogForm?: boolean;
+  }) {
+    const payload = await apiFetch<{ appliedGroupCount?: number; readyGroupCount: number }>(
+      "/api/me/logs",
+      {
+        method: "POST",
+        body: JSON.stringify({ weightKg, recordedOn, note })
+      }
+    );
+    if (clearLogForm) {
+      setLogForm((current) => ({ ...current, note: "" }));
+    }
+    await refreshAfterWeightChange();
+    const appliedGroupCount = payload.appliedGroupCount ?? payload.readyGroupCount;
+    setMessage(
+      appliedGroupCount > 0
+        ? t.logSavedAll.replace("{count}", String(appliedGroupCount))
+        : t.logSavedPrivate
+    );
+  }
+
   async function handleBase(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedGroupId) {
@@ -3414,18 +3572,44 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       return;
     }
 
+    if (dashboard?.me.baseReady) {
+      setPendingBaseAction({ weightKg: baseWeightKg, date: baseForm.date });
+      return;
+    }
+
     await run("base", async () => {
-      await apiFetch(`/api/groups/${selectedGroupId}/base`, {
-        method: "PATCH",
-        body: JSON.stringify({ baseWeightKg, baseDate: baseForm.date })
+      await updatePrivateBase(baseWeightKg, baseForm.date);
+    });
+  }
+
+  async function handleConfirmBaseUpdate() {
+    if (!pendingBaseAction) {
+      return;
+    }
+
+    const action = pendingBaseAction;
+    await run("base", async () => {
+      await updatePrivateBase(action.weightKg, action.date);
+      setPendingBaseAction(null);
+      setBaseForm((current) => ({ ...current, weight: "" }));
+    });
+  }
+
+  async function handleConfirmBaseAsLog() {
+    if (!pendingBaseAction) {
+      return;
+    }
+
+    const action = pendingBaseAction;
+    await run("log", async () => {
+      await saveWeightRecord({
+        weightKg: action.weightKg,
+        recordedOn: action.date,
+        note: "",
+        clearLogForm: false
       });
-      const loadedProfile = await loadMeAndGroups();
-      await Promise.all([
-        loadPublicDashboard(),
-        loadPersonalDashboard(),
-        loadStatusDashboardIfAllowed(loadedProfile),
-        loadDashboard(selectedGroupId)
-      ]);
+      setPendingBaseAction(null);
+      setBaseForm((current) => ({ ...current, weight: "" }));
     });
   }
 
@@ -3439,27 +3623,12 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     }
 
     await run("log", async () => {
-      const payload = await apiFetch<{ appliedGroupCount?: number; readyGroupCount: number }>(
-        "/api/me/logs",
-        {
-          method: "POST",
-          body: JSON.stringify({ weightKg, recordedOn: logForm.date, note: logForm.note })
-        }
-      );
-      setLogForm((current) => ({ ...current, note: "" }));
-      const loadedProfile = await loadMeAndGroups();
-      await Promise.all([
-        loadPublicDashboard(),
-        loadPersonalDashboard(),
-        loadStatusDashboardIfAllowed(loadedProfile),
-        selectedGroupId ? loadDashboard(selectedGroupId) : Promise.resolve()
-      ]);
-      const appliedGroupCount = payload.appliedGroupCount ?? payload.readyGroupCount;
-      setMessage(
-        appliedGroupCount > 0
-          ? t.logSavedAll.replace("{count}", String(appliedGroupCount))
-          : t.logSavedPrivate
-      );
+      await saveWeightRecord({
+        weightKg,
+        recordedOn: logForm.date,
+        note: logForm.note,
+        clearLogForm: true
+      });
     });
   }
 
@@ -4012,55 +4181,122 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
               />
 
               <section className="action-row">
-                <form className="action-panel" onSubmit={handleBase}>
-                  <div className="panel-title">
-                    <ShieldCheck size={18} />
-                    <span>{t.setBase}</span>
-                  </div>
-                  <p className="micro-copy panel-hint">
-                    {t.baseForGroup} {dashboard.group.name}
-                  </p>
-                  <div className="inline-fields">
-                    <label>
-                      <span>{t.baseWeight}</span>
-                      <input
-                        type="number"
-                        inputMode="decimal"
-                        step="0.1"
-                        min="40"
-                        value={baseForm.weight}
-                        onChange={(event) =>
-                          setBaseForm((current) => ({ ...current, weight: event.target.value }))
-                        }
-                        required
-                      />
-                    </label>
-                    <label>
-                      <span>{t.baseDate}</span>
-                      <input
-                        type="date"
-                        value={baseForm.date}
-                        onChange={(event) =>
-                          setBaseForm((current) => ({ ...current, date: event.target.value }))
-                        }
-                        required
-                      />
-                    </label>
-                    <button className="primary-button" disabled={busy === "base"} type="submit">
-                      {t.setBase}
-                    </button>
-                  </div>
-                </form>
+                {readyToCompete ? (
+                  <>
+                    <LogWeightForm
+                      busy={busy}
+                      hint={t.logAppliesAllGroups}
+                      language={language}
+                      logForm={logForm}
+                      onSubmit={handleLog}
+                      setLogForm={setLogForm}
+                      title={t.logWeight}
+                    />
 
-                <LogWeightForm
-                  busy={busy}
-                  hint={t.logAppliesAllGroups}
-                  language={language}
-                  logForm={logForm}
-                  onSubmit={handleLog}
-                  setLogForm={setLogForm}
-                  title={t.logWeight}
-                />
+                    <details className="action-panel base-adjust-panel">
+                      <summary>
+                        <span>
+                          <ShieldCheck size={18} />
+                          {t.adjustBase}
+                        </span>
+                        <small>{t.baseAdjustHint}</small>
+                      </summary>
+                      <form className="base-adjust-form" onSubmit={handleBase}>
+                        <p className="micro-copy panel-hint">
+                          {t.baseForGroup} {dashboard.group.name}
+                        </p>
+                        <div className="inline-fields">
+                          <label>
+                            <span>{t.baseWeight}</span>
+                            <input
+                              type="number"
+                              inputMode="decimal"
+                              step="0.1"
+                              min="40"
+                              value={baseForm.weight}
+                              onChange={(event) =>
+                                setBaseForm((current) => ({
+                                  ...current,
+                                  weight: event.target.value
+                                }))
+                              }
+                              required
+                            />
+                          </label>
+                          <label>
+                            <span>{t.baseDate}</span>
+                            <input
+                              type="date"
+                              value={baseForm.date}
+                              onChange={(event) =>
+                                setBaseForm((current) => ({ ...current, date: event.target.value }))
+                              }
+                              required
+                            />
+                          </label>
+                          <button className="secondary-button" disabled={busy === "base"} type="submit">
+                            {t.adjustBase}
+                          </button>
+                        </div>
+                      </form>
+                    </details>
+                  </>
+                ) : (
+                  <>
+                    <form className="action-panel" onSubmit={handleBase}>
+                      <div className="panel-title">
+                        <ShieldCheck size={18} />
+                        <span>{t.setBase}</span>
+                      </div>
+                      <p className="micro-copy panel-hint">
+                        {t.baseForGroup} {dashboard.group.name}
+                      </p>
+                      <div className="inline-fields">
+                        <label>
+                          <span>{t.baseWeight}</span>
+                          <input
+                            type="number"
+                            inputMode="decimal"
+                            step="0.1"
+                            min="40"
+                            value={baseForm.weight}
+                            onChange={(event) =>
+                              setBaseForm((current) => ({
+                                ...current,
+                                weight: event.target.value
+                              }))
+                            }
+                            required
+                          />
+                        </label>
+                        <label>
+                          <span>{t.baseDate}</span>
+                          <input
+                            type="date"
+                            value={baseForm.date}
+                            onChange={(event) =>
+                              setBaseForm((current) => ({ ...current, date: event.target.value }))
+                            }
+                            required
+                          />
+                        </label>
+                        <button className="primary-button" disabled={busy === "base"} type="submit">
+                          {t.setBase}
+                        </button>
+                      </div>
+                    </form>
+
+                    <LogWeightForm
+                      busy={busy}
+                      hint={t.logAppliesAllGroups}
+                      language={language}
+                      logForm={logForm}
+                      onSubmit={handleLog}
+                      setLogForm={setLogForm}
+                      title={t.logWeight}
+                    />
+                  </>
+                )}
               </section>
 
               {!readyToCompete && <div className="nudge-bar">{t.noBase}</div>}
@@ -4165,6 +4401,18 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
           )}
         </section>
       </div>
+
+      {pendingBaseAction && (
+        <BaseActionConfirmModal
+          action={pendingBaseAction}
+          busy={busy}
+          language={language}
+          onClose={() => setPendingBaseAction(null)}
+          onSaveAsLog={handleConfirmBaseAsLog}
+          onUpdateBase={handleConfirmBaseUpdate}
+          unit={unit}
+        />
+      )}
 
       {selectedMember && (
         <MemberProfileModal
