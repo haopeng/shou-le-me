@@ -28,7 +28,16 @@ import {
   ZoomIn
 } from "lucide-react";
 import Image from "next/image";
-import { type ChangeEvent, type FormEvent, useEffect, useMemo, useState } from "react";
+import {
+  type ChangeEvent,
+  type FormEvent,
+  type RefObject,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState
+} from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
   copy,
@@ -549,7 +558,9 @@ function LogWeightForm({
   busy,
   language,
   title,
-  hint
+  hint,
+  formRef,
+  weightInputRef
 }: {
   logForm: LogFormState;
   setLogForm: (updater: (current: LogFormState) => LogFormState) => void;
@@ -558,11 +569,13 @@ function LogWeightForm({
   language: Language;
   title: string;
   hint?: string;
+  formRef?: RefObject<HTMLFormElement | null>;
+  weightInputRef?: RefObject<HTMLInputElement | null>;
 }) {
   const t = copy[language];
 
   return (
-    <form className="action-panel log-action-panel" onSubmit={onSubmit}>
+    <form className="action-panel log-action-panel" ref={formRef} onSubmit={onSubmit}>
       <div className="panel-title">
         <Weight size={18} />
         <span>{title}</span>
@@ -572,6 +585,7 @@ function LogWeightForm({
         <label>
           <span>{t.weight}</span>
           <input
+            ref={weightInputRef}
             type="number"
             inputMode="decimal"
             step="0.1"
@@ -869,7 +883,9 @@ function PersonalDashboardView({
   setLogForm,
   onLog,
   onDeleteLog,
-  busy
+  busy,
+  formRef,
+  weightInputRef
 }: {
   dashboard: PersonalDashboard | null;
   unit: WeightUnit;
@@ -879,6 +895,8 @@ function PersonalDashboardView({
   onLog: (event: FormEvent<HTMLFormElement>) => void;
   onDeleteLog: (date: string) => void;
   busy: string | null;
+  formRef?: RefObject<HTMLFormElement | null>;
+  weightInputRef?: RefObject<HTMLInputElement | null>;
 }) {
   const t = copy[language];
 
@@ -970,6 +988,8 @@ function PersonalDashboardView({
         onSubmit={onLog}
         setLogForm={setLogForm}
         title={t.logWeight}
+        formRef={formRef}
+        weightInputRef={weightInputRef}
       />
 
       <div className="personal-dashboard-grid">
@@ -2987,6 +3007,9 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   const [handledInvite, setHandledInvite] = useState<string | null>(null);
   const [origin, setOrigin] = useState("https://shou-le-me.vercel.app");
   const [googleEnabled, setGoogleEnabled] = useState<boolean | null>(null);
+  const logFormRef = useRef<HTMLFormElement | null>(null);
+  const logWeightInputRef = useRef<HTMLInputElement | null>(null);
+  const pendingQuickLogRef = useRef(false);
 
   const t = copy[language];
 
@@ -3203,6 +3226,38 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     setActiveView("group");
     writeSelectionUrl({ language, inviteCode: group.inviteCode, replace });
   }
+
+  const focusVisibleLogForm = useCallback(() => {
+    if (!logFormRef.current) {
+      return false;
+    }
+
+    logFormRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    window.setTimeout(() => logWeightInputRef.current?.focus({ preventScroll: true }), 360);
+    return true;
+  }, []);
+
+  function handleQuickLog() {
+    if (activeView === "top5" || activeView === "status") {
+      pendingQuickLogRef.current = true;
+      showPersonalView();
+      return;
+    }
+
+    if (!focusVisibleLogForm()) {
+      pendingQuickLogRef.current = true;
+    }
+  }
+
+  useEffect(() => {
+    if (!pendingQuickLogRef.current || (activeView !== "personal" && activeView !== "group")) {
+      return;
+    }
+
+    if (focusVisibleLogForm()) {
+      pendingQuickLogRef.current = false;
+    }
+  }, [activeView, dashboard, focusVisibleLogForm, personalDashboard]);
 
   useEffect(() => {
     if (!session) {
@@ -4101,6 +4156,8 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
               onDeleteLog={handleDeleteLog}
               onLog={handleLog}
               setLogForm={setLogForm}
+              formRef={logFormRef}
+              weightInputRef={logWeightInputRef}
               unit={unit}
             />
           ) : selectedGroup && dashboard ? (
@@ -4191,6 +4248,8 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                       onSubmit={handleLog}
                       setLogForm={setLogForm}
                       title={t.logWeight}
+                      formRef={logFormRef}
+                      weightInputRef={logWeightInputRef}
                     />
 
                     <details className="action-panel base-adjust-panel">
@@ -4294,6 +4353,8 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                       onSubmit={handleLog}
                       setLogForm={setLogForm}
                       title={t.logWeight}
+                      formRef={logFormRef}
+                      weightInputRef={logWeightInputRef}
                     />
                   </>
                 )}
@@ -4413,6 +4474,16 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
           unit={unit}
         />
       )}
+
+      <button
+        aria-label={t.logWeight}
+        className="quick-log-button"
+        type="button"
+        onClick={handleQuickLog}
+      >
+        <Plus size={22} />
+        <span>{t.quickLog}</span>
+      </button>
 
       {selectedMember && (
         <MemberProfileModal

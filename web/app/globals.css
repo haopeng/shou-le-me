@@ -53,6 +53,7 @@ button:disabled {
 input,
 textarea {
   width: 100%;
+  min-width: 0;
   min-height: 42px;
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -76,6 +77,7 @@ textarea:focus {
 
 label {
   display: grid;
+  min-width: 0;
   gap: 6px;
   color: var(--muted);
   font-size: 0.78rem;
@@ -968,6 +970,14 @@ label span {
   grid-template-columns: minmax(94px, 0.8fr) minmax(130px, 0.85fr) minmax(130px, 1fr) auto;
 }
 
+.log-action-panel {
+  scroll-margin: 28px;
+}
+
+.log-action-panel input {
+  min-height: 46px;
+}
+
 .base-adjust-panel {
   align-self: start;
   border-style: dashed;
@@ -1015,6 +1025,34 @@ label span {
 .base-adjust-panel .inline-fields,
 .action-panel:last-child.base-adjust-panel .inline-fields {
   grid-template-columns: minmax(100px, 1fr) minmax(130px, 1fr) auto;
+}
+
+.quick-log-button {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(22px, calc(env(safe-area-inset-bottom) + 18px));
+  z-index: 30;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-width: 82px;
+  min-height: 56px;
+  border: 0;
+  border-radius: 999px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--hot), var(--aqua));
+  padding: 0 18px;
+  box-shadow:
+    0 18px 44px rgba(255, 86, 63, 0.32),
+    0 8px 18px rgba(36, 198, 188, 0.2);
+  font-size: 1rem;
+  font-weight: 950;
+}
+
+.quick-log-button svg {
+  flex: 0 0 auto;
+  stroke-width: 3;
 }
 
 .panel-hint {
@@ -2082,11 +2120,14 @@ label span {
   }
 
   .score-strip,
-  .action-row,
   .side-rail,
   .status-detail-grid,
   .admin-group-row {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .action-row {
+    grid-template-columns: 1fr;
   }
 
   .admin-group-row .email-chip-list {
@@ -2101,7 +2142,8 @@ label span {
     order: 1;
   }
 
-  .action-panel:last-child {
+  .action-panel:last-child,
+  .log-action-panel {
     grid-column: 1 / -1;
   }
 
@@ -2115,6 +2157,10 @@ label span {
 
   .inline-fields button {
     grid-column: 1 / -1;
+  }
+
+  .log-action-panel .inline-fields {
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .group-hero {
@@ -2134,6 +2180,10 @@ label span {
     padding: 14px;
   }
 
+  .app-shell {
+    padding-bottom: 92px;
+  }
+
   .app-header {
     align-items: flex-start;
     flex-direction: column;
@@ -2142,6 +2192,23 @@ label span {
   .header-actions {
     width: 100%;
     justify-content: space-between;
+  }
+
+  .log-action-panel {
+    padding: 18px;
+  }
+
+  .log-action-panel input {
+    min-height: 52px;
+    font-size: 1rem;
+  }
+
+  .quick-log-button {
+    right: 14px;
+    bottom: max(16px, calc(env(safe-area-inset-bottom) + 14px));
+    min-width: 72px;
+    min-height: 54px;
+    padding: 0 15px;
   }
 
   .score-strip,
