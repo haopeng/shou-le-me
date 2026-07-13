@@ -372,6 +372,206 @@ function SharedTrendChart({
   );
 }
 
+function isoWeekInfo(dateString: string) {
+  const date = new Date(`${dateString}T00:00:00Z`);
+  const day = date.getUTCDay() || 7;
+  date.setUTCDate(date.getUTCDate() + 4 - day);
+  const weekYear = date.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(weekYear, 0, 1));
+  const week = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  const weekText = `W${String(week).padStart(2, "0")}`;
+
+  return {
+    key: `${weekYear}-${weekText}`,
+    label: weekText
+  };
+}
+
+function buildWeeklyLowPoints(member: GroupDashboard["members"][number]) {
+  const lowsByWeek = new Map<
+    string,
+    {
+      weekKey: string;
+      weekLabel: string;
+      date: string;
+      deltaKg: number;
+    }
+  >();
+
+  for (const point of member.sparkline) {
+    const week = isoWeekInfo(point.date);
+    const current = lowsByWeek.get(week.key);
+    if (!current || point.deltaKg < current.deltaKg) {
+      lowsByWeek.set(week.key, {
+        weekKey: week.key,
+        weekLabel: week.label,
+        date: point.date,
+        deltaKg: point.deltaKg
+      });
+    }
+  }
+
+  return Array.from(lowsByWeek.values()).sort((left, right) =>
+    left.weekKey.localeCompare(right.weekKey)
+  );
+}
+
+function WeeklyLowTrendChart({
+  dashboard,
+  unit,
+  language
+}: {
+  dashboard: GroupDashboard;
+  unit: WeightUnit;
+  language: Language;
+}) {
+  const t = copy[language];
+  const colors = ["#24c6bc", "#ff563f", "#7064ff", "#ffb84d", "#32a86d", "#d92d45"];
+  const memberSeries = dashboard.members
+    .map((member) => ({
+      member,
+      points: buildWeeklyLowPoints(member)
+    }))
+    .filter((entry) => entry.points.length >= 2);
+
+  const weekKeys = Array.from(
+    new Set(memberSeries.flatMap((entry) => entry.points.map((point) => point.weekKey)))
+  ).sort((left, right) => left.localeCompare(right));
+
+  if (weekKeys.length < 2 || !memberSeries.length) {
+    return null;
+  }
+
+  const width = 940;
+  const height = 230;
+  const padLeft = 58;
+  const padRight = 30;
+  const padTop = 24;
+  const padBottom = 42;
+  const weekIndex = new Map(weekKeys.map((weekKey, index) => [weekKey, index]));
+  const weekLabels = new Map(
+    memberSeries.flatMap((entry) => entry.points.map((point) => [point.weekKey, point.weekLabel]))
+  );
+  const values = memberSeries.flatMap((entry) => entry.points.map((point) => point.deltaKg));
+  const rawMin = Math.min(...values, 0);
+  const rawMax = Math.max(...values, 0);
+  const rawSpan = rawMax - rawMin;
+  const visualSpan = Math.max(rawSpan, 0.58);
+  const center = (rawMin + rawMax) / 2;
+  const paddedMin = center - visualSpan / 2;
+  const paddedMax = center + visualSpan / 2;
+  const padding = Math.max(0.06, visualSpan * 0.08);
+  const min = Math.min(paddedMin - padding, rawMin - padding, 0);
+  const max = Math.max(paddedMax + padding, rawMax + padding, 0);
+  const range = max - min || 1;
+  const chartWidth = width - padLeft - padRight;
+  const chartHeight = height - padTop - padBottom;
+  const xFor = (weekKey: string) => {
+    const index = weekIndex.get(weekKey) ?? 0;
+    return padLeft + (index / Math.max(1, weekKeys.length - 1)) * chartWidth;
+  };
+  const yFor = (value: number) => padTop + ((max - value) / range) * chartHeight;
+  const axisValues = Array.from(new Set([roundOne(max), 0, roundOne(min)]));
+  const zeroY = yFor(0);
+
+  return (
+    <section className="weekly-low-card">
+      <div className="weekly-low-head">
+        <div>
+          <strong>{t.weeklyLowTrend}</strong>
+          <p>{t.weeklyLowTrendHint}</p>
+        </div>
+      </div>
+      <svg className="weekly-low-plot" viewBox={`0 0 ${width} ${height}`} role="img">
+        <defs>
+          <linearGradient id="weekly-low-down-zone" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#24c6bc" stopOpacity="0.16" />
+            <stop offset="100%" stopColor="#24c6bc" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+        {zeroY < height - padBottom && (
+          <rect
+            className="weekly-low-down-zone"
+            x={padLeft}
+            y={zeroY}
+            width={chartWidth}
+            height={height - padBottom - zeroY}
+          />
+        )}
+        {axisValues.map((value) => (
+          <g key={value}>
+            <path
+              d={`M ${padLeft} ${yFor(value).toFixed(2)} L ${width - padRight} ${yFor(value).toFixed(2)}`}
+              className={value === 0 ? "weekly-low-zero" : "weekly-low-grid"}
+            />
+            <text x={16} y={yFor(value) + 4} className="weekly-low-axis-label">
+              {formatNumber(toDisplayWeight(value, unit))}
+            </text>
+          </g>
+        ))}
+
+        {memberSeries.map((entry, index) => {
+          const color = colors[index % colors.length];
+          const path = entry.points
+            .map((point, pointIndex) => {
+              const command = pointIndex === 0 ? "M" : "L";
+              return `${command} ${xFor(point.weekKey).toFixed(2)} ${yFor(point.deltaKg).toFixed(
+                2
+              )}`;
+            })
+            .join(" ");
+          const latest = entry.points.at(-1)!;
+
+          return (
+            <g key={entry.member.memberId}>
+              <path className="weekly-low-glow" d={path} style={{ stroke: color }} />
+              <path className="weekly-low-path" d={path} style={{ stroke: color }} />
+              {entry.points.map((point) => (
+                <circle
+                  className="weekly-low-dot"
+                  cx={xFor(point.weekKey)}
+                  cy={yFor(point.deltaKg)}
+                  key={`${entry.member.memberId}-${point.weekKey}`}
+                  r={5.5}
+                  style={{ fill: color }}
+                />
+              ))}
+              <text
+                x={Math.min(width - padRight - 76, xFor(latest.weekKey) + 10)}
+                y={yFor(latest.deltaKg) + 4}
+                className="weekly-low-label"
+                style={{ fill: color }}
+              >
+                {entry.member.displayName}
+              </text>
+            </g>
+          );
+        })}
+
+        <text x={padLeft} y={height - 10} className="weekly-low-date-label">
+          {weekLabels.get(weekKeys[0])}
+        </text>
+        <text x={width - padRight} y={height - 10} className="weekly-low-date-label end">
+          {weekLabels.get(weekKeys.at(-1)!)}
+        </text>
+      </svg>
+      <div className="weekly-low-legend">
+        {memberSeries.map((entry, index) => {
+          const color = colors[index % colors.length];
+          const latest = entry.points.at(-1)!;
+          return (
+            <span className={entry.member.isMe ? "me" : ""} key={entry.member.memberId}>
+              <i style={{ background: color }} />
+              {entry.member.displayName}
+              <strong>{formatDeltaText(latest.deltaKg, unit, language)}</strong>
+            </span>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function buildWeightChartGeometry(values: number[], width: number, height: number, padX: number, padY: number) {
   const low = Math.min(...values);
   const high = Math.max(...values);
@@ -1172,6 +1372,7 @@ function MemberTrendBoard({
       </div>
 
       <SharedTrendChart dashboard={dashboard} unit={unit} language={language} />
+      <WeeklyLowTrendChart dashboard={dashboard} unit={unit} language={language} />
 
       <div className="trend-card-grid">
         {dashboard.members.map((member) => {

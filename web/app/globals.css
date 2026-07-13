@@ -1281,6 +1281,141 @@ label span {
   color: var(--ink);
 }
 
+.weekly-low-card {
+  display: grid;
+  gap: 10px;
+  margin-top: 12px;
+  border: 1px solid rgba(36, 198, 188, 0.16);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(36, 198, 188, 0.08), rgba(255, 255, 255, 0.72)),
+    rgba(255, 255, 255, 0.72);
+  padding: 12px;
+}
+
+.weekly-low-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.weekly-low-head strong {
+  color: var(--ink);
+  font-size: 0.94rem;
+  font-weight: 950;
+}
+
+.weekly-low-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 780;
+  line-height: 1.35;
+}
+
+.weekly-low-plot {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.weekly-low-grid,
+.weekly-low-zero {
+  fill: none;
+  stroke: rgba(31, 41, 51, 0.1);
+  stroke-width: 1.5;
+}
+
+.weekly-low-zero {
+  stroke: rgba(31, 41, 51, 0.24);
+  stroke-dasharray: 5 7;
+}
+
+.weekly-low-down-zone {
+  fill: url(#weekly-low-down-zone);
+}
+
+.weekly-low-glow {
+  fill: none;
+  stroke-width: 12;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.14;
+  filter: blur(3px);
+}
+
+.weekly-low-path {
+  fill: none;
+  stroke-width: 6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 8px 12px rgba(31, 41, 51, 0.12));
+}
+
+.weekly-low-dot {
+  stroke: #fff;
+  stroke-width: 4;
+}
+
+.weekly-low-label,
+.weekly-low-axis-label,
+.weekly-low-date-label {
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.weekly-low-label {
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.88);
+  stroke-width: 4;
+}
+
+.weekly-low-axis-label,
+.weekly-low-date-label {
+  fill: var(--muted);
+}
+
+.weekly-low-date-label.end {
+  text-anchor: end;
+}
+
+.weekly-low-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.weekly-low-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  border: 1px solid rgba(31, 41, 51, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.76);
+  padding: 0 10px;
+  color: #394657;
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+.weekly-low-legend span.me {
+  border-color: rgba(36, 198, 188, 0.28);
+  background: rgba(36, 198, 188, 0.12);
+}
+
+.weekly-low-legend i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.weekly-low-legend strong {
+  color: var(--ink);
+}
+
 .trend-empty-line {
   display: grid;
   place-items: center;
