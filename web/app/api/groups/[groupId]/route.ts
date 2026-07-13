@@ -399,6 +399,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
       baseWeight !== null && previousWeight !== null
         ? roundTenth(previousWeight - baseWeight)
         : null;
+    const historicalBestDeltaKg =
+      baseWeight !== null && scopedLogs.length
+        ? roundTenth(
+            Math.min(...scopedLogs.map((log) => Number(log.weight_kg) - baseWeight))
+          )
+        : null;
 
     return {
       member,
@@ -407,6 +413,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       latestWeight,
       deltaKg,
       previousDeltaKg,
+      historicalBestDeltaKg,
       latestDate: latestLog?.recorded_on ?? null
     };
   });
@@ -442,6 +449,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         latestDate: entry.latestDate,
         deltaKg: entry.deltaKg,
         previousDeltaKg: entry.previousDeltaKg,
+        historicalBestDeltaKg: entry.historicalBestDeltaKg,
         daysLogged: entry.logs.length,
         rank: rankByMember.get(entry.member.id) ?? null,
         badges: badgeKeys(entry.logs, entry.baseWeight, entry.latestWeight),

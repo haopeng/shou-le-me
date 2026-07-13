@@ -572,6 +572,66 @@ function WeeklyLowTrendChart({
   );
 }
 
+function HistoricalBestDeltaBars({
+  dashboard,
+  unit,
+  language
+}: {
+  dashboard: GroupDashboard;
+  unit: WeightUnit;
+  language: Language;
+}) {
+  const t = copy[language];
+  const rows = dashboard.members
+    .filter((member) => member.historicalBestDeltaKg !== null)
+    .map((member) => {
+      const bestDeltaKg = member.historicalBestDeltaKg!;
+      return {
+        member,
+        bestDeltaKg,
+        lossMagnitudeKg: Math.max(0, -bestDeltaKg)
+      };
+    })
+    .sort((left, right) => right.lossMagnitudeKg - left.lossMagnitudeKg);
+  const maxLossKg = Math.max(...rows.map((row) => row.lossMagnitudeKg), 0);
+
+  if (!rows.length || maxLossKg <= 0) {
+    return null;
+  }
+
+  return (
+    <section className="historical-best-card">
+      <div className="historical-best-head">
+        <div>
+          <strong>{t.historicalBestDelta}</strong>
+          <p>{t.historicalBestDeltaHint}</p>
+        </div>
+      </div>
+      <div className="historical-best-bars">
+        {rows.map((row, index) => {
+          const width = row.lossMagnitudeKg <= 0 ? 0 : (row.lossMagnitudeKg / maxLossKg) * 100;
+          return (
+            <div className="historical-best-row" key={row.member.memberId}>
+              <div className="historical-best-person">
+                <span>{index + 1}</span>
+                <Avatar name={row.member.displayName} url={row.member.avatarUrl} />
+                <strong>{row.member.displayName}</strong>
+                {row.member.isMe && <em>{t.you}</em>}
+              </div>
+              <div className="historical-best-track">
+                <i style={{ width: `${Math.max(width, 4)}%` }} />
+              </div>
+              <div className="historical-best-value">
+                {formatDeltaText(row.bestDeltaKg, unit, language)}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function buildWeightChartGeometry(values: number[], width: number, height: number, padX: number, padY: number) {
   const low = Math.min(...values);
   const high = Math.max(...values);
@@ -1373,6 +1433,7 @@ function MemberTrendBoard({
 
       <SharedTrendChart dashboard={dashboard} unit={unit} language={language} />
       <WeeklyLowTrendChart dashboard={dashboard} unit={unit} language={language} />
+      <HistoricalBestDeltaBars dashboard={dashboard} unit={unit} language={language} />
 
       <div className="trend-card-grid">
         {dashboard.members.map((member) => {
@@ -2144,6 +2205,10 @@ function buildLocalDashboard(state: LocalPreviewState, language: Language): Grou
     const deltaKg = baseWeight !== null && latest ? roundOne(latest.weightKg - baseWeight) : null;
     const previousDeltaKg =
       baseWeight !== null && previous ? roundOne(previous.weightKg - baseWeight) : null;
+    const historicalBestDeltaKg =
+      baseWeight !== null && logs.length
+        ? roundOne(Math.min(...logs.map((log) => log.weightKg - baseWeight)))
+        : null;
     const sparkline =
       baseWeight === null
         ? []
@@ -2152,7 +2217,7 @@ function buildLocalDashboard(state: LocalPreviewState, language: Language): Grou
             deltaKg: roundOne(log.weightKg - baseWeight)
           }));
 
-    return { member, logs, latest, deltaKg, previousDeltaKg, sparkline };
+    return { member, logs, latest, deltaKg, previousDeltaKg, historicalBestDeltaKg, sparkline };
   });
   const ranked = computed
     .filter((entry) => entry.deltaKg !== null)
@@ -2172,6 +2237,7 @@ function buildLocalDashboard(state: LocalPreviewState, language: Language): Grou
       latestDate: entry.latest?.recordedOn ?? null,
       deltaKg: entry.deltaKg,
       previousDeltaKg: entry.previousDeltaKg,
+      historicalBestDeltaKg: entry.historicalBestDeltaKg,
       daysLogged: entry.logs.length,
       rank: rankByUser.get(entry.member.userId) ?? null,
       badges: entry.deltaKg === null ? [] : entry.deltaKg <= 0 ? ["badgeBelowStart"] : [],

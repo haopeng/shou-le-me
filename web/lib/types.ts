@@ -74,6 +74,7 @@ export type DashboardMember = {
   latestDate: string | null;
   deltaKg: number | null;
   previousDeltaKg: number | null;
+  historicalBestDeltaKg: number | null;
   daysLogged: number;
   rank: number | null;
   badges: string[];

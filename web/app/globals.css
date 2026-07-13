@@ -1416,6 +1416,117 @@ label span {
   color: var(--ink);
 }
 
+.historical-best-card {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+  border: 1px solid rgba(255, 86, 63, 0.16);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(255, 86, 63, 0.08), rgba(255, 184, 77, 0.09)),
+    rgba(255, 255, 255, 0.74);
+  padding: 12px;
+}
+
+.historical-best-head strong {
+  color: var(--ink);
+  font-size: 0.94rem;
+  font-weight: 950;
+}
+
+.historical-best-head p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 780;
+  line-height: 1.35;
+}
+
+.historical-best-bars {
+  display: grid;
+  gap: 9px;
+}
+
+.historical-best-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 0.85fr) minmax(160px, 1.2fr) minmax(76px, auto);
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  border: 1px solid rgba(31, 41, 51, 0.07);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.7);
+  padding: 9px;
+}
+
+.historical-best-person {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+}
+
+.historical-best-person > span {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 86, 63, 0.12);
+  color: #a82d38;
+  font-size: 0.78rem;
+  font-weight: 950;
+}
+
+.historical-best-person .avatar {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+}
+
+.historical-best-person strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--ink);
+  font-weight: 950;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.historical-best-person em {
+  border-radius: 999px;
+  background: rgba(36, 198, 188, 0.13);
+  color: #136257;
+  padding: 3px 7px;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.historical-best-track {
+  height: 18px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(31, 41, 51, 0.07);
+}
+
+.historical-best-track i {
+  display: block;
+  min-width: 4px;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--hot), var(--sun));
+  box-shadow: 0 7px 16px rgba(255, 86, 63, 0.22);
+}
+
+.historical-best-value {
+  color: var(--green);
+  font-size: 1rem;
+  font-weight: 950;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .trend-empty-line {
   display: grid;
   place-items: center;
@@ -2344,6 +2455,14 @@ label span {
     width: 56px;
     min-width: 56px;
     min-height: 54px;
+  }
+
+  .historical-best-row {
+    grid-template-columns: 1fr;
+  }
+
+  .historical-best-value {
+    text-align: left;
   }
 
   .score-strip,
