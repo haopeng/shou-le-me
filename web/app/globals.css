@@ -1236,6 +1236,13 @@ label span {
   stroke-width: 4;
 }
 
+.shared-trend-best-emoji {
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-anchor: middle;
+}
+
 .shared-trend-axis-label,
 .shared-trend-date-label {
   fill: var(--muted);

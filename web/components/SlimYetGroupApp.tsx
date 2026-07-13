@@ -291,6 +291,11 @@ function SharedTrendChart({
           const latest = sortedPoints.at(-1)!;
           const first = sortedPoints[0];
           const isSinglePoint = sortedPoints.length === 1;
+          const historicalBestPoint =
+            member.historicalBestDeltaDate === null
+              ? null
+              : (sortedPoints.find((point) => point.date === member.historicalBestDeltaDate) ??
+                null);
 
           return (
             <g key={member.memberId}>
@@ -330,6 +335,16 @@ function SharedTrendChart({
                 className="shared-trend-dot"
                 style={{ fill: color }}
               />
+              {historicalBestPoint && (
+                <text
+                  aria-hidden="true"
+                  x={xFor(historicalBestPoint.date)}
+                  y={Math.max(18, yFor(historicalBestPoint.deltaKg) - 15)}
+                  className="shared-trend-best-emoji"
+                >
+                  🏆
+                </text>
+              )}
               <text
                 x={Math.min(width - padRight - 76, xFor(latest.date) + 10)}
                 y={yFor(latest.deltaKg) + 4}
@@ -2205,9 +2220,13 @@ function buildLocalDashboard(state: LocalPreviewState, language: Language): Grou
     const deltaKg = baseWeight !== null && latest ? roundOne(latest.weightKg - baseWeight) : null;
     const previousDeltaKg =
       baseWeight !== null && previous ? roundOne(previous.weightKg - baseWeight) : null;
-    const historicalBestDeltaKg =
+    const historicalBestLog =
       baseWeight !== null && logs.length
-        ? roundOne(Math.min(...logs.map((log) => log.weightKg - baseWeight)))
+        ? logs.reduce((winner, log) => (log.weightKg < winner.weightKg ? log : winner))
+        : null;
+    const historicalBestDeltaKg =
+      baseWeight !== null && historicalBestLog
+        ? roundOne(historicalBestLog.weightKg - baseWeight)
         : null;
     const sparkline =
       baseWeight === null
@@ -2217,7 +2236,16 @@ function buildLocalDashboard(state: LocalPreviewState, language: Language): Grou
             deltaKg: roundOne(log.weightKg - baseWeight)
           }));
 
-    return { member, logs, latest, deltaKg, previousDeltaKg, historicalBestDeltaKg, sparkline };
+    return {
+      member,
+      logs,
+      latest,
+      deltaKg,
+      previousDeltaKg,
+      historicalBestDeltaKg,
+      historicalBestDeltaDate: historicalBestLog?.recordedOn ?? null,
+      sparkline
+    };
   });
   const ranked = computed
     .filter((entry) => entry.deltaKg !== null)
@@ -2238,6 +2266,7 @@ function buildLocalDashboard(state: LocalPreviewState, language: Language): Grou
       deltaKg: entry.deltaKg,
       previousDeltaKg: entry.previousDeltaKg,
       historicalBestDeltaKg: entry.historicalBestDeltaKg,
+      historicalBestDeltaDate: entry.historicalBestDeltaDate,
       daysLogged: entry.logs.length,
       rank: rankByUser.get(entry.member.userId) ?? null,
       badges: entry.deltaKg === null ? [] : entry.deltaKg <= 0 ? ["badgeBelowStart"] : [],
