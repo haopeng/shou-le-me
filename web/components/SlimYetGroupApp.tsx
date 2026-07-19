@@ -431,29 +431,91 @@ function buildWeeklyLowPoints(member: GroupDashboard["members"][number]) {
   );
 }
 
-function WeeklyLowTrendChart({
+function aggregateMonthlyLowPoints(points: Array<{ date: string; deltaKg: number }>) {
+  const lowsByMonth = new Map<
+    string,
+    {
+      month: string;
+      date: string;
+      deltaKg: number;
+    }
+  >();
+
+  for (const point of points) {
+    const month = point.date.slice(0, 7);
+    const current = lowsByMonth.get(month);
+
+    if (!current || point.deltaKg < current.deltaKg) {
+      lowsByMonth.set(month, {
+        month,
+        date: point.date,
+        deltaKg: point.deltaKg
+      });
+    }
+  }
+
+  return Array.from(lowsByMonth.values()).sort((left, right) =>
+    left.month.localeCompare(right.month)
+  );
+}
+
+function formatMonthLabel(month: string, language: Language) {
+  const [year, monthText] = month.split("-");
+  const monthNumber = Number(monthText);
+
+  if (language === "zh") {
+    return `${year}年${monthNumber}月`;
+  }
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC"
+  }).format(new Date(Date.UTC(Number(year), monthNumber - 1, 1)));
+}
+
+function CalendarLowTrendChart({
   dashboard,
   unit,
-  language
+  language,
+  period
 }: {
   dashboard: GroupDashboard;
   unit: WeightUnit;
   language: Language;
+  period: "week" | "month";
 }) {
   const t = copy[language];
+  const isMonthly = period === "month";
+  const title = isMonthly ? t.monthlyLowTrend : t.weeklyLowTrend;
+  const hint = isMonthly ? t.monthlyLowTrendHint : t.weeklyLowTrendHint;
+  const gradientId = `${period}-low-down-zone`;
   const colors = ["#24c6bc", "#ff563f", "#7064ff", "#ffb84d", "#32a86d", "#d92d45"];
   const memberSeries = dashboard.members
-    .map((member) => ({
-      member,
-      points: buildWeeklyLowPoints(member)
-    }))
-    .filter((entry) => entry.points.length >= 2);
+    .map((member) => {
+      const points = isMonthly
+        ? member.monthlyLowPoints.map((point) => ({
+            periodKey: point.month,
+            periodLabel: formatMonthLabel(point.month, language),
+            date: point.date,
+            deltaKg: point.deltaKg
+          }))
+        : buildWeeklyLowPoints(member).map((point) => ({
+            periodKey: point.weekKey,
+            periodLabel: point.weekLabel,
+            date: point.date,
+            deltaKg: point.deltaKg
+          }));
 
-  const weekKeys = Array.from(
-    new Set(memberSeries.flatMap((entry) => entry.points.map((point) => point.weekKey)))
+      return { member, points };
+    })
+    .filter((entry) => entry.points.length > 0);
+
+  const periodKeys = Array.from(
+    new Set(memberSeries.flatMap((entry) => entry.points.map((point) => point.periodKey)))
   ).sort((left, right) => left.localeCompare(right));
 
-  if (weekKeys.length < 2 || !memberSeries.length) {
+  if (periodKeys.length < 2 || !memberSeries.length) {
     return null;
   }
 
@@ -463,9 +525,11 @@ function WeeklyLowTrendChart({
   const padRight = 30;
   const padTop = 24;
   const padBottom = 42;
-  const weekIndex = new Map(weekKeys.map((weekKey, index) => [weekKey, index]));
-  const weekLabels = new Map(
-    memberSeries.flatMap((entry) => entry.points.map((point) => [point.weekKey, point.weekLabel]))
+  const periodIndex = new Map(periodKeys.map((periodKey, index) => [periodKey, index]));
+  const periodLabels = new Map(
+    memberSeries.flatMap((entry) =>
+      entry.points.map((point) => [point.periodKey, point.periodLabel])
+    )
   );
   const values = memberSeries.flatMap((entry) => entry.points.map((point) => point.deltaKg));
   const rawMin = Math.min(...values, 0);
@@ -481,25 +545,31 @@ function WeeklyLowTrendChart({
   const range = max - min || 1;
   const chartWidth = width - padLeft - padRight;
   const chartHeight = height - padTop - padBottom;
-  const xFor = (weekKey: string) => {
-    const index = weekIndex.get(weekKey) ?? 0;
-    return padLeft + (index / Math.max(1, weekKeys.length - 1)) * chartWidth;
+  const xFor = (periodKey: string) => {
+    const index = periodIndex.get(periodKey) ?? 0;
+    return padLeft + (index / Math.max(1, periodKeys.length - 1)) * chartWidth;
   };
   const yFor = (value: number) => padTop + ((max - value) / range) * chartHeight;
   const axisValues = Array.from(new Set([roundOne(max), 0, roundOne(min)]));
   const zeroY = yFor(0);
 
   return (
-    <section className="weekly-low-card">
+    <section className={classNames("weekly-low-card", isMonthly && "monthly-low-card")}>
       <div className="weekly-low-head">
         <div>
-          <strong>{t.weeklyLowTrend}</strong>
-          <p>{t.weeklyLowTrendHint}</p>
+          <strong>{title}</strong>
+          <p>{hint}</p>
         </div>
       </div>
-      <svg className="weekly-low-plot" viewBox={`0 0 ${width} ${height}`} role="img">
+      <svg
+        aria-label={title}
+        className="weekly-low-plot"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+      >
+        <title>{title}</title>
         <defs>
-          <linearGradient id="weekly-low-down-zone" x1="0" x2="0" y1="0" y2="1">
+          <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="#24c6bc" stopOpacity="0.16" />
             <stop offset="100%" stopColor="#24c6bc" stopOpacity="0.02" />
           </linearGradient>
@@ -511,6 +581,7 @@ function WeeklyLowTrendChart({
             y={zeroY}
             width={chartWidth}
             height={height - padBottom - zeroY}
+            style={{ fill: `url(#${gradientId})` }}
           />
         )}
         {axisValues.map((value) => (
@@ -530,9 +601,9 @@ function WeeklyLowTrendChart({
           const path = entry.points
             .map((point, pointIndex) => {
               const command = pointIndex === 0 ? "M" : "L";
-              return `${command} ${xFor(point.weekKey).toFixed(2)} ${yFor(point.deltaKg).toFixed(
-                2
-              )}`;
+              return `${command} ${xFor(point.periodKey).toFixed(2)} ${yFor(
+                point.deltaKg
+              ).toFixed(2)}`;
             })
             .join(" ");
           const latest = entry.points.at(-1)!;
@@ -544,15 +615,20 @@ function WeeklyLowTrendChart({
               {entry.points.map((point) => (
                 <circle
                   className="weekly-low-dot"
-                  cx={xFor(point.weekKey)}
+                  cx={xFor(point.periodKey)}
                   cy={yFor(point.deltaKg)}
-                  key={`${entry.member.memberId}-${point.weekKey}`}
+                  key={`${entry.member.memberId}-${point.periodKey}`}
                   r={5.5}
                   style={{ fill: color }}
-                />
+                >
+                  <title>
+                    {entry.member.displayName} · {point.periodLabel} ·{" "}
+                    {formatDeltaText(point.deltaKg, unit, language)}
+                  </title>
+                </circle>
               ))}
               <text
-                x={Math.min(width - padRight - 76, xFor(latest.weekKey) + 10)}
+                x={Math.min(width - padRight - 76, xFor(latest.periodKey) + 10)}
                 y={yFor(latest.deltaKg) + 4}
                 className="weekly-low-label"
                 style={{ fill: color }}
@@ -564,10 +640,10 @@ function WeeklyLowTrendChart({
         })}
 
         <text x={padLeft} y={height - 10} className="weekly-low-date-label">
-          {weekLabels.get(weekKeys[0])}
+          {periodLabels.get(periodKeys[0])}
         </text>
         <text x={width - padRight} y={height - 10} className="weekly-low-date-label end">
-          {weekLabels.get(weekKeys.at(-1)!)}
+          {periodLabels.get(periodKeys.at(-1)!)}
         </text>
       </svg>
       <div className="weekly-low-legend">
@@ -1447,7 +1523,18 @@ function MemberTrendBoard({
       </div>
 
       <SharedTrendChart dashboard={dashboard} unit={unit} language={language} />
-      <WeeklyLowTrendChart dashboard={dashboard} unit={unit} language={language} />
+      <CalendarLowTrendChart
+        dashboard={dashboard}
+        unit={unit}
+        language={language}
+        period="week"
+      />
+      <CalendarLowTrendChart
+        dashboard={dashboard}
+        unit={unit}
+        language={language}
+        period="month"
+      />
       <HistoricalBestDeltaBars dashboard={dashboard} unit={unit} language={language} />
 
       <div className="trend-card-grid">
@@ -2244,7 +2331,8 @@ function buildLocalDashboard(state: LocalPreviewState, language: Language): Grou
       previousDeltaKg,
       historicalBestDeltaKg,
       historicalBestDeltaDate: historicalBestLog?.recordedOn ?? null,
-      sparkline
+      sparkline,
+      monthlyLowPoints: aggregateMonthlyLowPoints(sparkline)
     };
   });
   const ranked = computed
@@ -2272,6 +2360,7 @@ function buildLocalDashboard(state: LocalPreviewState, language: Language): Grou
       badges: entry.deltaKg === null ? [] : entry.deltaKg <= 0 ? ["badgeBelowStart"] : [],
       highlights: localHighlights(entry.logs, entry.sparkline, entry.deltaKg, entry.previousDeltaKg),
       sparkline: entry.sparkline,
+      monthlyLowPoints: entry.monthlyLowPoints,
       isMe: entry.member.userId === localMeId
     }))
     .sort((left, right) => (left.rank ?? 99) - (right.rank ?? 99));

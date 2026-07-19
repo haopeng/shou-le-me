@@ -102,6 +102,39 @@ function numberOrNull(value: number | string | null | undefined) {
   return Number.isFinite(number) ? number : null;
 }
 
+function monthlyLowPoints(logs: WeightLogRow[], baseWeight: number | null) {
+  if (baseWeight === null) {
+    return [];
+  }
+
+  const lowsByMonth = new Map<
+    string,
+    {
+      month: string;
+      date: string;
+      deltaKg: number;
+    }
+  >();
+
+  for (const log of logs) {
+    const month = log.recorded_on.slice(0, 7);
+    const deltaKg = roundTenth(Number(log.weight_kg) - baseWeight) ?? 0;
+    const current = lowsByMonth.get(month);
+
+    if (!current || deltaKg < current.deltaKg) {
+      lowsByMonth.set(month, {
+        month,
+        date: log.recorded_on,
+        deltaKg
+      });
+    }
+  }
+
+  return Array.from(lowsByMonth.values()).sort((left, right) =>
+    left.month.localeCompare(right.month)
+  );
+}
+
 function displayNameFor(member: MemberRow, profile: ProfileRow | undefined) {
   const name =
     member.display_name ||
@@ -461,6 +494,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         badges: badgeKeys(entry.logs, entry.baseWeight, entry.latestWeight),
         highlights: memberHighlights(entry.logs, sparkline, entry.deltaKg, entry.previousDeltaKg),
         sparkline,
+        monthlyLowPoints: monthlyLowPoints(entry.logs, entry.baseWeight),
         isMe: entry.member.user_id === auth.user.id
       };
     })

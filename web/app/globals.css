@@ -1300,6 +1300,13 @@ label span {
   padding: 12px;
 }
 
+.monthly-low-card {
+  border-color: rgba(112, 100, 255, 0.18);
+  background:
+    linear-gradient(180deg, rgba(112, 100, 255, 0.08), rgba(255, 255, 255, 0.72)),
+    rgba(255, 255, 255, 0.72);
+}
+
 .weekly-low-head {
   display: flex;
   align-items: flex-start;

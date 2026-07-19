@@ -48,6 +48,12 @@ export type SparkPoint = {
   deltaKg: number;
 };
 
+export type MonthlyLowPoint = {
+  month: string;
+  date: string;
+  deltaKg: number;
+};
+
 export type MemberHighlight = {
   kind:
     | "base_needed"
@@ -81,6 +87,7 @@ export type DashboardMember = {
   badges: string[];
   highlights: MemberHighlight[];
   sparkline: SparkPoint[];
+  monthlyLowPoints: MonthlyLowPoint[];
   isMe: boolean;
 };
 
