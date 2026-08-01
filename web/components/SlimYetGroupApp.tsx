@@ -68,6 +68,7 @@ type SlimYetGroupAppProps = {
 };
 
 type ActiveView = "top5" | "status" | "personal" | "group";
+type TrendRange = "week" | "month" | "year" | "all";
 
 type LogFormState = {
   weight: string;
@@ -93,6 +94,17 @@ function todayIso() {
   const date = new Date();
   date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
   return date.toISOString().slice(0, 10);
+}
+
+function trendRangeStart(range: TrendRange) {
+  if (range === "all") {
+    return null;
+  }
+
+  const days = range === "week" ? 7 : range === "month" ? 30 : 365;
+  const start = new Date(`${todayIso()}T00:00:00Z`);
+  start.setUTCDate(start.getUTCDate() - (days - 1));
+  return start.toISOString().slice(0, 10);
 }
 
 function toDisplayWeight(kg: number, unit: WeightUnit) {
@@ -202,25 +214,27 @@ function writeSelectionUrl({
 function SharedTrendChart({
   dashboard,
   unit,
-  language
+  language,
+  emptyMessage
 }: {
   dashboard: GroupDashboard;
   unit: WeightUnit;
   language: Language;
+  emptyMessage?: string;
 }) {
   const plottedMembers = dashboard.members.filter((member) => member.sparkline.length >= 1);
 
   if (!plottedMembers.length) {
-    return <div className="trend-empty-line">{copy[language].noTrend}</div>;
+    return <div className="trend-empty-line">{emptyMessage ?? copy[language].noTrend}</div>;
   }
 
   const colors = ["#ff563f", "#24c6bc", "#7064ff", "#ffb84d", "#32a86d", "#d92d45"];
   const width = 940;
-  const height = 280;
-  const padLeft = 58;
-  const padRight = 30;
-  const padTop = 24;
-  const padBottom = 44;
+  const height = 320;
+  const padLeft = 66;
+  const padRight = 66;
+  const padTop = 38;
+  const padBottom = 60;
   const dates = Array.from(
     new Set(plottedMembers.flatMap((member) => member.sparkline.map((point) => point.date)))
   ).sort((left, right) => left.localeCompare(right));
@@ -249,7 +263,13 @@ function SharedTrendChart({
 
   return (
     <div className="shared-trend-wrap">
-      <svg className="shared-trend-plot" viewBox={`0 0 ${width} ${height}`} role="img">
+      <svg
+        aria-label={copy[language].trendBoard}
+        className="shared-trend-plot"
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+      >
+        <title>{copy[language].trendBoard}</title>
         <defs>
           <linearGradient id="shared-down-zone" x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor="#24c6bc" stopOpacity="0.18" />
@@ -274,6 +294,13 @@ function SharedTrendChart({
             <text x={16} y={yFor(value) + 4} className="shared-trend-axis-label">
               {formatNumber(toDisplayWeight(value, unit))}
             </text>
+            <text
+              x={width - 16}
+              y={yFor(value) + 4}
+              className="shared-trend-axis-label end"
+            >
+              {formatNumber(toDisplayWeight(value, unit))}
+            </text>
           </g>
         ))}
 
@@ -291,11 +318,32 @@ function SharedTrendChart({
           const latest = sortedPoints.at(-1)!;
           const first = sortedPoints[0];
           const isSinglePoint = sortedPoints.length === 1;
+          const visibleBestPoint = sortedPoints.reduce((winner, point) =>
+            point.deltaKg < winner.deltaKg ? point : winner
+          );
           const historicalBestPoint =
             member.historicalBestDeltaDate === null
               ? null
               : (sortedPoints.find((point) => point.date === member.historicalBestDeltaDate) ??
                 null);
+          const keyPoints = new Map<
+            string,
+            {
+              point: (typeof sortedPoints)[number];
+              kind: "first" | "best";
+            }
+          >();
+          keyPoints.set(first.date, { point: first, kind: "first" });
+          keyPoints.set(visibleBestPoint.date, { point: visibleBestPoint, kind: "best" });
+          keyPoints.delete(latest.date);
+          const latestX = xFor(latest.date);
+          const latestY = yFor(latest.deltaKg);
+          const latestOnRight = latestX > width - padRight - 130;
+          const latestIsBest = latest.date === visibleBestPoint.date;
+          const latestLabelBelow = latestIsBest && latestY + 20 <= height - 22;
+          const latestLabelY = latestLabelBelow
+            ? latestY + 20
+            : Math.max(18, latestY - 13 - (index % 2) * 10);
 
           return (
             <g key={member.memberId}>
@@ -321,16 +369,50 @@ function SharedTrendChart({
                   />
                 </>
               )}
+              {Array.from(keyPoints.values()).map(({ point, kind }) => {
+                const pointX = xFor(point.date);
+                const pointY = yFor(point.deltaKg);
+                const labelBelow = kind === "best" && pointY + 20 <= height - 22;
+                const labelY = labelBelow ? pointY + 20 : Math.max(18, pointY - 13);
+                const nearLeft = pointX < padLeft + 70;
+                const nearRight = pointX > width - padRight - 70;
+
+                return (
+                  <g key={`${member.memberId}-${kind}-${point.date}`}>
+                    <circle
+                      cx={pointX}
+                      cy={pointY}
+                      r={5}
+                      className="shared-trend-key-dot"
+                      style={{ fill: color }}
+                    >
+                      <title>
+                        {member.displayName} · {point.date} ·{" "}
+                        {formatDeltaText(point.deltaKg, unit, language)}
+                      </title>
+                    </circle>
+                    <text
+                      x={pointX + (nearLeft ? 8 : nearRight ? -8 : 0)}
+                      y={labelY}
+                      className="shared-trend-value-label"
+                      style={{ fill: color }}
+                      textAnchor={nearLeft ? "start" : nearRight ? "end" : "middle"}
+                    >
+                      {formatNumber(toDisplayWeight(point.deltaKg, unit))}
+                    </text>
+                  </g>
+                );
+              })}
               <circle
-                cx={xFor(latest.date)}
-                cy={yFor(latest.deltaKg)}
+                cx={latestX}
+                cy={latestY}
                 r={isSinglePoint ? 13 : member.rank === 1 ? 13 : 10}
                 className="shared-trend-dot-halo"
                 style={{ fill: color }}
               />
               <circle
-                cx={xFor(latest.date)}
-                cy={yFor(latest.deltaKg)}
+                cx={latestX}
+                cy={latestY}
                 r={isSinglePoint ? 9 : member.rank === 1 ? 8 : 6}
                 className="shared-trend-dot"
                 style={{ fill: color }}
@@ -346,12 +428,13 @@ function SharedTrendChart({
                 </text>
               )}
               <text
-                x={Math.min(width - padRight - 76, xFor(latest.date) + 10)}
-                y={yFor(latest.deltaKg) + 4}
+                x={latestX + (latestOnRight ? -10 : 10)}
+                y={latestLabelY}
                 className="shared-trend-label"
                 style={{ fill: color }}
+                textAnchor={latestOnRight ? "end" : "start"}
               >
-                {member.displayName}
+                {member.displayName} · {formatNumber(toDisplayWeight(latest.deltaKg, unit))}
               </text>
             </g>
           );
@@ -1509,6 +1592,30 @@ function MemberTrendBoard({
   onMemberSelect: (member: GroupDashboard["members"][number]) => void;
 }) {
   const t = copy[language];
+  const [trendRange, setTrendRange] = useState<TrendRange>("all");
+  const hasAnyTrendData = dashboard.members.some(
+    (member) => member.trendline.length > 0 || member.sparkline.length > 0
+  );
+  const rangedDashboard = useMemo(() => {
+    const start = trendRangeStart(trendRange);
+
+    return {
+      ...dashboard,
+      members: dashboard.members.map((member) => {
+        const source = member.trendline.length > 0 ? member.trendline : member.sparkline;
+        return {
+          ...member,
+          sparkline: start === null ? source : source.filter((point) => point.date >= start)
+        };
+      })
+    };
+  }, [dashboard, trendRange]);
+  const rangeOptions: Array<{ value: TrendRange; label: string }> = [
+    { value: "week", label: t.trendRangeWeek },
+    { value: "month", label: t.trendRangeMonth },
+    { value: "year", label: t.trendRangeYear },
+    { value: "all", label: t.trendRangeAll }
+  ];
 
   return (
     <section className="panel trend-board-panel">
@@ -1520,9 +1627,27 @@ function MemberTrendBoard({
           </div>
           <p className="micro-copy">{t.trendBoardHint}</p>
         </div>
+        <div className="segmented-control trend-range-control" aria-label={t.trendRange}>
+          {rangeOptions.map((option) => (
+            <button
+              aria-pressed={trendRange === option.value}
+              className={trendRange === option.value ? "active" : undefined}
+              key={option.value}
+              onClick={() => setTrendRange(option.value)}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <SharedTrendChart dashboard={dashboard} unit={unit} language={language} />
+      <SharedTrendChart
+        dashboard={rangedDashboard}
+        unit={unit}
+        language={language}
+        emptyMessage={hasAnyTrendData ? t.noTrendInRange : t.noTrend}
+      />
       <CalendarLowTrendChart
         dashboard={dashboard}
         unit={unit}
@@ -2360,6 +2485,7 @@ function buildLocalDashboard(state: LocalPreviewState, language: Language): Grou
       badges: entry.deltaKg === null ? [] : entry.deltaKg <= 0 ? ["badgeBelowStart"] : [],
       highlights: localHighlights(entry.logs, entry.sparkline, entry.deltaKg, entry.previousDeltaKg),
       sparkline: entry.sparkline,
+      trendline: entry.sparkline,
       monthlyLowPoints: entry.monthlyLowPoints,
       isMe: entry.member.userId === localMeId
     }))

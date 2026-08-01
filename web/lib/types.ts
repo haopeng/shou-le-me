@@ -87,6 +87,7 @@ export type DashboardMember = {
   badges: string[];
   highlights: MemberHighlight[];
   sparkline: SparkPoint[];
+  trendline: SparkPoint[];
   monthlyLowPoints: MonthlyLowPoint[];
   isMe: boolean;
 };

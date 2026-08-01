@@ -468,13 +468,14 @@ export async function GET(request: NextRequest, context: RouteContext) {
   const membersPayload = computed
     .map((entry) => {
       const profile = profilesById.get(entry.member.user_id);
-      const sparkline =
+      const trendline =
         entry.baseWeight === null
           ? []
-          : entry.logs.slice(-21).map((log) => ({
+          : entry.logs.map((log) => ({
               date: log.recorded_on,
               deltaKg: roundTenth(Number(log.weight_kg) - entry.baseWeight!) ?? 0
             }));
+      const sparkline = trendline.slice(-21);
 
       return {
         memberId: entry.member.id,
@@ -494,6 +495,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
         badges: badgeKeys(entry.logs, entry.baseWeight, entry.latestWeight),
         highlights: memberHighlights(entry.logs, sparkline, entry.deltaKg, entry.previousDeltaKg),
         sparkline,
+        trendline,
         monthlyLowPoints: monthlyLowPoints(entry.logs, entry.baseWeight),
         isMe: entry.member.user_id === auth.user.id
       };

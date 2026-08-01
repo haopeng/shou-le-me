@@ -1222,6 +1222,11 @@ label span {
   opacity: 0.18;
 }
 
+.shared-trend-key-dot {
+  stroke: #fff;
+  stroke-width: 3;
+}
+
 .shared-trend-label,
 .shared-trend-axis-label,
 .shared-trend-date-label {
@@ -1231,9 +1236,19 @@ label span {
 }
 
 .shared-trend-label {
+  font-size: 14px;
   paint-order: stroke;
   stroke: rgba(255, 255, 255, 0.88);
   stroke-width: 4;
+}
+
+.shared-trend-value-label {
+  font-size: 14px;
+  font-weight: 950;
+  letter-spacing: 0;
+  paint-order: stroke;
+  stroke: rgba(255, 255, 255, 0.92);
+  stroke-width: 5;
 }
 
 .shared-trend-best-emoji {
@@ -1246,6 +1261,14 @@ label span {
 .shared-trend-axis-label,
 .shared-trend-date-label {
   fill: var(--muted);
+}
+
+.shared-trend-axis-label {
+  font-size: 14px;
+}
+
+.shared-trend-axis-label.end {
+  text-anchor: end;
 }
 
 .shared-trend-date-label.end {
@@ -2005,6 +2028,15 @@ label span {
   gap: 14px;
 }
 
+.trend-range-control {
+  grid-template-columns: repeat(4, minmax(64px, 1fr));
+  flex: 0 0 auto;
+}
+
+.trend-range-control button {
+  white-space: nowrap;
+}
+
 .micro-copy {
   margin: -4px 0 0;
 }
@@ -2534,6 +2566,11 @@ label span {
 
   .chart-heading {
     flex-direction: column;
+  }
+
+  .trend-range-control {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 100%;
   }
 
   .chart-kpis {
