@@ -70,6 +70,15 @@ type SlimYetGroupAppProps = {
 type ActiveView = "top5" | "status" | "personal" | "group";
 type TrendRange = "week" | "month" | "year" | "all";
 
+type WeightSuccessNotice = {
+  id: number;
+  groupName: string | null;
+  latestDeltaKg: number | null;
+  previousDeltaKg: number | null;
+  appliedGroupCount: number;
+  latestChanged: boolean;
+};
+
 type LogFormState = {
   weight: string;
   date: string;
@@ -843,6 +852,92 @@ function formatDeltaText(deltaKg: number, unit: WeightUnit, language: Language) 
   const value = toDisplayWeight(deltaKg, unit);
   const sign = value > 0 ? "+" : "";
   return `${sign}${formatNumber(value)} ${copy[language][unit]}`;
+}
+
+function WeightSuccessToast({
+  notice,
+  unit,
+  language,
+  onDismiss
+}: {
+  notice: WeightSuccessNotice;
+  unit: WeightUnit;
+  language: Language;
+  onDismiss: () => void;
+}) {
+  const t = copy[language];
+  const moveKg =
+    notice.latestDeltaKg !== null && notice.previousDeltaKg !== null
+      ? roundOne(notice.latestDeltaKg - notice.previousDeltaKg)
+      : null;
+  const moveText =
+    moveKg === null
+      ? null
+      : `${formatNumber(toDisplayWeight(Math.abs(moveKg), unit))} ${t[unit]}`;
+  const cheer = !notice.latestChanged
+    ? t.weightSuccessUnchanged
+    : notice.latestDeltaKg === null
+      ? t.weightSuccessSaved
+      : notice.previousDeltaKg === null
+        ? t.weightSuccessFirst
+        : moveKg !== null && moveKg < 0
+          ? t.weightSuccessDown.replace("{value}", moveText ?? "")
+          : moveKg !== null && moveKg > 0
+            ? t.weightSuccessUp.replace("{value}", moveText ?? "")
+            : t.weightSuccessFlat;
+  const scopeMessage =
+    notice.appliedGroupCount > 0
+      ? t.logSavedAll.replace("{count}", String(notice.appliedGroupCount))
+      : t.logSavedPrivate;
+
+  useEffect(() => {
+    const timeout = window.setTimeout(onDismiss, 6000);
+    return () => window.clearTimeout(timeout);
+  }, [notice.id, onDismiss]);
+
+  return (
+    <aside className="weight-success-toast" role="status" aria-live="polite" aria-atomic="true">
+      <div className="weight-success-icon" aria-hidden="true">
+        <Sparkles size={22} />
+      </div>
+      <div className="weight-success-content">
+        <div className="weight-success-heading">
+          <strong>{t.weightSuccessTitle}</strong>
+          {notice.groupName && <span>{notice.groupName}</span>}
+        </div>
+        {notice.latestDeltaKg !== null && (
+          <div className="weight-success-metrics">
+            <div>
+              <span>{t.weightSuccessLatest}</span>
+              <strong className={notice.latestDeltaKg <= 0 ? "good" : "warm"}>
+                {formatDeltaText(notice.latestDeltaKg, unit, language)}
+              </strong>
+            </div>
+            <i aria-hidden="true" />
+            <div>
+              <span>{t.weightSuccessPrevious}</span>
+              <strong>
+                {notice.previousDeltaKg === null
+                  ? t.weightSuccessFirstValue
+                  : formatDeltaText(notice.previousDeltaKg, unit, language)}
+              </strong>
+            </div>
+          </div>
+        )}
+        <p>{cheer}</p>
+        <small>{scopeMessage}</small>
+      </div>
+      <button
+        aria-label={t.close}
+        className="weight-success-close"
+        onClick={onDismiss}
+        type="button"
+      >
+        <X size={17} />
+      </button>
+      <span className="weight-success-timer" aria-hidden="true" />
+    </aside>
+  );
 }
 
 function personalHighlightText(
@@ -2584,15 +2679,27 @@ function syncLocalMe(groups: LocalGroup[], ownLogs: LocalLog[], nickname: string
   }));
 }
 
-function latestDeltaForGroup(group: LocalGroup, logs: LocalLog[]) {
+function deltaSummaryForGroup(group: LocalGroup, logs: LocalLog[]) {
   const me = group.members.find((member) => member.userId === localMeId);
-  const latest = sortedLogs(logs).at(-1);
 
-  if (!me?.baseWeightKg || !latest) {
-    return null;
+  if (me?.baseWeightKg === null || me?.baseWeightKg === undefined) {
+    return { latestDeltaKg: null, previousDeltaKg: null };
   }
 
-  return roundOne(latest.weightKg - me.baseWeightKg);
+  const scopedLogs = sortedLogs(logs).filter(
+    (log) => !me.baseDate || log.recordedOn >= me.baseDate
+  );
+  const latest = scopedLogs.at(-1) ?? null;
+  const previous = scopedLogs.length >= 2 ? scopedLogs.at(-2)! : null;
+
+  return {
+    latestDeltaKg: latest ? roundOne(latest.weightKg - me.baseWeightKg) : null,
+    previousDeltaKg: previous ? roundOne(previous.weightKg - me.baseWeightKg) : null
+  };
+}
+
+function latestDeltaForGroup(group: LocalGroup, logs: LocalLog[]) {
+  return deltaSummaryForGroup(group, logs).latestDeltaKg;
 }
 
 function localInviteCode() {
@@ -2621,6 +2728,7 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
   const [baseForm, setBaseForm] = useState({ weight: "", date: todayIso() });
   const [logForm, setLogForm] = useState({ weight: "", date: todayIso(), note: "" });
   const [message, setMessage] = useState<string | null>(null);
+  const [weightSuccess, setWeightSuccess] = useState<WeightSuccessNotice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [origin, setOrigin] = useState("https://shou-le-me.vercel.app");
@@ -2636,6 +2744,7 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
   );
   const readyToCompete = dashboard.me.baseReady;
   const languageButtonLabel = language === "en" ? "中文" : "EN";
+  const dismissWeightSuccess = useCallback(() => setWeightSuccess(null), []);
   const labelForBadge = (badge: string) =>
     badge in t ? t[badge as keyof typeof t] : badge.replace(/^badge/, "");
 
@@ -2747,6 +2856,7 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
 
   function showMessage(nextMessage: string) {
     setError(null);
+    setWeightSuccess(null);
     setMessage(nextMessage);
   }
 
@@ -2963,25 +3073,43 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
     const weightKg = fromDisplayWeight(logForm.weight, unit);
 
     if (weightKg === null) {
+      setWeightSuccess(null);
       setError(t.errorFallback);
       return;
     }
 
+    const nextOwnLogs = upsertLocalLog(state.ownLogs, {
+      recordedOn: logForm.date,
+      weightKg,
+      note: logForm.note.trim() || null
+    });
+    const previousLatestLog = sortedLogs(state.ownLogs).at(-1) ?? null;
+    const nextLatestLog = nextOwnLogs.at(-1) ?? null;
+    const deltaSummary = deltaSummaryForGroup(selectedGroup, nextOwnLogs);
+    const appliedGroupCount = state.groups.filter((group) => {
+      const me = group.members.find((member) => member.userId === localMeId);
+      return (
+        me?.baseWeightKg !== null &&
+        me?.baseWeightKg !== undefined &&
+        (!me.baseDate || logForm.date >= me.baseDate)
+      );
+    }).length;
+
     setState((current) => {
-      const nextOwnLogs = upsertLocalLog(current.ownLogs, {
+      const currentNextOwnLogs = upsertLocalLog(current.ownLogs, {
         recordedOn: logForm.date,
         weightKg,
         note: logForm.note.trim() || null
       });
       const groupsWithLogs = syncLocalMe(
         current.groups,
-        nextOwnLogs,
+        currentNextOwnLogs,
         current.nickname,
         current.avatarUrl
       );
       const nextGroups = groupsWithLogs.map((group) => {
         const previousDeltaKg = latestDeltaForGroup(group, current.ownLogs);
-        const newDeltaKg = latestDeltaForGroup(group, nextOwnLogs);
+        const newDeltaKg = latestDeltaForGroup(group, currentNextOwnLogs);
         const shouldPostFeed =
           newDeltaKg !== null && (previousDeltaKg === null || previousDeltaKg !== newDeltaKg);
 
@@ -3015,12 +3143,23 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
 
       return {
         ...current,
-        ownLogs: nextOwnLogs,
+        ownLogs: currentNextOwnLogs,
         groups: nextGroups
       };
     });
     setLogForm((current) => ({ ...current, note: "" }));
-    showMessage(language === "zh" ? "体重已记录，小组变化已更新。" : "Weight logged. Group deltas updated.");
+    setError(null);
+    setMessage(null);
+    setWeightSuccess({
+      id: Date.now(),
+      groupName: selectedGroup.name,
+      latestDeltaKg: deltaSummary.latestDeltaKg,
+      previousDeltaKg: deltaSummary.previousDeltaKg,
+      appliedGroupCount,
+      latestChanged:
+        previousLatestLog?.recordedOn !== nextLatestLog?.recordedOn ||
+        previousLatestLog?.weightKg !== nextLatestLog?.weightKg
+    });
   }
 
   async function handleReaction(feedId: string, reaction: ReactionType) {
@@ -3130,6 +3269,16 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
           </button>
         </div>
       </header>
+
+      {weightSuccess && (
+        <WeightSuccessToast
+          key={weightSuccess.id}
+          language={language}
+          notice={weightSuccess}
+          onDismiss={dismissWeightSuccess}
+          unit={unit}
+        />
+      )}
 
       <div className="toast preview-toast">
         <ShieldCheck size={16} />
@@ -3492,6 +3641,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [message, setMessage] = useState<string | null>(null);
+  const [weightSuccess, setWeightSuccess] = useState<WeightSuccessNotice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -3523,6 +3673,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   const pendingQuickLogRef = useRef(false);
 
   const t = copy[language];
+  const dismissWeightSuccess = useCallback(() => setWeightSuccess(null), []);
 
   useEffect(() => {
     const initialLanguage = getInitialLanguage();
@@ -3621,6 +3772,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     setBusy(action);
     setError(null);
     setMessage(null);
+    setWeightSuccess(null);
     try {
       await task();
     } catch (caught) {
@@ -3701,11 +3853,12 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   async function loadDashboard(groupId = selectedGroupId) {
     if (!groupId) {
       setDashboard(null);
-      return;
+      return null;
     }
 
     const payload = await apiFetch<GroupDashboard>(`/api/groups/${groupId}`);
     setDashboard(payload);
+    return payload;
   }
 
   function showTop5View(replace = false) {
@@ -3798,7 +3951,9 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       return;
     }
 
-    run("dashboard", () => loadDashboard(selectedGroupId));
+    run("dashboard", async () => {
+      await loadDashboard(selectedGroupId);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedGroupId, session?.access_token]);
 
@@ -4075,12 +4230,13 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
 
   async function refreshAfterWeightChange(groupId = selectedGroupId) {
     const loadedProfile = await loadMeAndGroups();
-    await Promise.all([
+    const [, , , refreshedDashboard] = await Promise.all([
       loadPublicDashboard(),
       loadPersonalDashboard(),
       loadStatusDashboardIfAllowed(loadedProfile),
-      groupId ? loadDashboard(groupId) : Promise.resolve()
+      groupId ? loadDashboard(groupId) : Promise.resolve(null)
     ]);
+    return refreshedDashboard;
   }
 
   async function updatePrivateBase(weightKg: number, baseDate: string) {
@@ -4107,23 +4263,29 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     note: string;
     clearLogForm?: boolean;
   }) {
-    const payload = await apiFetch<{ appliedGroupCount?: number; readyGroupCount: number }>(
-      "/api/me/logs",
-      {
-        method: "POST",
-        body: JSON.stringify({ weightKg, recordedOn, note })
-      }
-    );
+    const payload = await apiFetch<{
+      appliedGroupCount?: number;
+      readyGroupCount: number;
+      latestChanged?: boolean;
+    }>("/api/me/logs", {
+      method: "POST",
+      body: JSON.stringify({ weightKg, recordedOn, note })
+    });
     if (clearLogForm) {
       setLogForm((current) => ({ ...current, note: "" }));
     }
-    await refreshAfterWeightChange();
+    const refreshedDashboard = await refreshAfterWeightChange();
     const appliedGroupCount = payload.appliedGroupCount ?? payload.readyGroupCount;
-    setMessage(
-      appliedGroupCount > 0
-        ? t.logSavedAll.replace("{count}", String(appliedGroupCount))
-        : t.logSavedPrivate
-    );
+    const me = refreshedDashboard?.members.find((member) => member.isMe) ?? null;
+    setMessage(null);
+    setWeightSuccess({
+      id: Date.now(),
+      groupName: refreshedDashboard?.group.name ?? null,
+      latestDeltaKg: me?.deltaKg ?? null,
+      previousDeltaKg: me?.previousDeltaKg ?? null,
+      appliedGroupCount,
+      latestChanged: payload.latestChanged ?? true
+    });
   }
 
   async function handleBase(event: FormEvent<HTMLFormElement>) {
@@ -4467,6 +4629,16 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
           </button>
         </div>
       </header>
+
+      {weightSuccess && (
+        <WeightSuccessToast
+          key={weightSuccess.id}
+          language={language}
+          notice={weightSuccess}
+          onDismiss={dismissWeightSuccess}
+          unit={unit}
+        />
+      )}
 
       {(message || error) && (
         <div className={error ? "toast error" : "toast"}>{error ?? message}</div>
