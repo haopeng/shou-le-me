@@ -93,6 +93,17 @@ type MemberHighlight = {
 };
 
 const reactionTypes: ReactionType[] = ["like", "heart", "care", "thumbs_down"];
+const defaultFeedPageSize = 10;
+const maxFeedPageSize = 200;
+
+function feedQueryInteger(value: string | null, fallback: number, max: number) {
+  if (value === null) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  return Number.isInteger(parsed) && parsed >= 0 ? Math.min(parsed, max) : fallback;
+}
 
 function numberOrNull(value: number | string | null | undefined) {
   if (value === null || value === undefined) {
@@ -290,6 +301,15 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 
   const { groupId } = await context.params;
+  const feedOffset = feedQueryInteger(request.nextUrl.searchParams.get("feedOffset"), 0, 10000);
+  const feedLimit = Math.max(
+    1,
+    feedQueryInteger(
+      request.nextUrl.searchParams.get("feedLimit"),
+      defaultFeedPageSize,
+      maxFeedPageSize
+    )
+  );
   const membership = await requireMembership(auth.admin, groupId, auth.user.id);
 
   if (!membership) {
@@ -524,13 +544,16 @@ export async function GET(request: NextRequest, context: RouteContext) {
     )
     .eq("group_id", groupId)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .order("id", { ascending: false })
+    .range(feedOffset, feedOffset + feedLimit);
 
   if (feedError) {
     return jsonError(feedError.message, 500);
   }
 
-  const feedRows = (feedItems ?? []) as FeedRow[];
+  const feedWindow = (feedItems ?? []) as FeedRow[];
+  const feedRows = feedWindow.slice(0, feedLimit);
+  const feedHasMore = feedWindow.length > feedLimit;
   const feedIds = feedRows.map((item) => item.id);
   const reactionsByFeed = new Map<string, ReactionRow[]>();
 
@@ -641,6 +664,12 @@ export async function GET(request: NextRequest, context: RouteContext) {
     },
     members: membersPayload,
     feed,
+    feedPage: {
+      offset: feedOffset,
+      limit: feedLimit,
+      nextOffset: feedOffset + feedRows.length,
+      hasMore: feedHasMore
+    },
     joinRequests: membership.role === "owner" ? joinRequestsPayload : []
   });
 }

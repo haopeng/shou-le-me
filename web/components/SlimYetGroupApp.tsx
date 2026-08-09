@@ -4,6 +4,7 @@ import {
   Activity,
   ArrowDownRight,
   CalendarDays,
+  ChevronDown,
   Clipboard,
   Flame,
   Gauge,
@@ -69,6 +70,7 @@ type SlimYetGroupAppProps = {
 
 type ActiveView = "top5" | "status" | "personal" | "group";
 type TrendRange = "week" | "month" | "year" | "all";
+const feedPageSize = 10;
 
 type WeightSuccessNotice = {
   id: number;
@@ -1839,12 +1841,14 @@ function FeedPanel({
   unit,
   language,
   onReact,
+  onLoadMore,
   busy
 }: {
   dashboard: GroupDashboard;
   unit: WeightUnit;
   language: Language;
   onReact: (feedId: string, reaction: ReactionType) => Promise<void>;
+  onLoadMore?: () => Promise<void>;
   busy: string | null;
 }) {
   const t = copy[language];
@@ -1938,6 +1942,17 @@ function FeedPanel({
           <div className="empty-state">{t.noFeed}</div>
         )}
       </div>
+      {dashboard.feedPage?.hasMore && onLoadMore ? (
+        <button
+          className="secondary-button full feed-load-more"
+          disabled={busy === "feed-more"}
+          onClick={onLoadMore}
+          type="button"
+        >
+          <ChevronDown size={18} />
+          {busy === "feed-more" ? t.loadingMoreFeed : t.loadMoreFeed}
+        </button>
+      ) : null}
     </section>
   );
 }
@@ -2731,12 +2746,26 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
   const [weightSuccess, setWeightSuccess] = useState<WeightSuccessNotice | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [feedVisibleCount, setFeedVisibleCount] = useState(feedPageSize);
   const [origin, setOrigin] = useState("https://shou-le-me.vercel.app");
   const [handledInvite, setHandledInvite] = useState<string | null>(null);
   const t = copy[language];
   const dashboard = useMemo(() => buildLocalDashboard(state, language), [state, language]);
   const selectedGroup =
     state.groups.find((group) => group.id === state.selectedGroupId) ?? state.groups[0];
+  const feedDashboard = useMemo(() => {
+    const visibleFeed = dashboard.feed.slice(0, feedVisibleCount);
+    return {
+      ...dashboard,
+      feed: visibleFeed,
+      feedPage: {
+        offset: 0,
+        limit: feedVisibleCount,
+        nextOffset: visibleFeed.length,
+        hasMore: dashboard.feed.length > visibleFeed.length
+      }
+    };
+  }, [dashboard, feedVisibleCount]);
   const topMember = dashboard.members.find((member) => member.rank === 1) ?? null;
   const shareLink = withLanguageParam(
     `${origin.replace(/\/$/, "")}/join/${dashboard.group.inviteCode}`,
@@ -2799,6 +2828,10 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
   useEffect(() => {
     window.localStorage.setItem("slim-yet-unit", unit);
   }, [unit]);
+
+  useEffect(() => {
+    setFeedVisibleCount(feedPageSize);
+  }, [state.selectedGroupId]);
 
   useEffect(() => {
     if (!hydrated) {
@@ -3150,6 +3183,7 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
     setLogForm((current) => ({ ...current, note: "" }));
     setError(null);
     setMessage(null);
+    setFeedVisibleCount(feedPageSize);
     setWeightSuccess({
       id: Date.now(),
       groupName: selectedGroup.name,
@@ -3221,6 +3255,10 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
       })
     }));
     setBusy(null);
+  }
+
+  async function handleLocalLoadMoreFeed() {
+    setFeedVisibleCount((current) => current + feedPageSize);
   }
 
   async function handleShare() {
@@ -3617,8 +3655,9 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
             <div className="right-stack">
               <FeedPanel
                 busy={busy}
-                dashboard={dashboard}
+                dashboard={feedDashboard}
                 language={language}
+                onLoadMore={handleLocalLoadMoreFeed}
                 onReact={handleReaction}
                 unit={unit}
               />
@@ -3850,14 +3889,36 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     await loadStatusDashboard();
   }
 
-  async function loadDashboard(groupId = selectedGroupId) {
+  async function loadDashboard(
+    groupId = selectedGroupId,
+    options: { feedOffset?: number; feedLimit?: number; appendFeed?: boolean } = {}
+  ) {
     if (!groupId) {
       setDashboard(null);
       return null;
     }
 
-    const payload = await apiFetch<GroupDashboard>(`/api/groups/${groupId}`);
-    setDashboard(payload);
+    const params = new URLSearchParams({
+      feedOffset: String(options.feedOffset ?? 0),
+      feedLimit: String(options.feedLimit ?? feedPageSize)
+    });
+    const payload = await apiFetch<GroupDashboard>(`/api/groups/${groupId}?${params}`);
+
+    if (options.appendFeed) {
+      setDashboard((current) => {
+        if (!current || current.group.id !== groupId) {
+          return payload;
+        }
+
+        const loadedIds = new Set(current.feed.map((item) => item.id));
+        return {
+          ...payload,
+          feed: [...current.feed, ...payload.feed.filter((item) => !loadedIds.has(item.id))]
+        };
+      });
+    } else {
+      setDashboard(payload);
+    }
     return payload;
   }
 
@@ -4385,7 +4446,27 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
         method: "POST",
         body: JSON.stringify({ reaction })
       });
-      await Promise.all([loadDashboard(selectedGroupId), loadStatusDashboardIfAllowed()]);
+      await Promise.all([
+        loadDashboard(selectedGroupId, {
+          feedLimit: Math.max(feedPageSize, dashboard?.feed.length ?? feedPageSize)
+        }),
+        loadStatusDashboardIfAllowed()
+      ]);
+    });
+  }
+
+  async function handleLoadMoreFeed() {
+    const page = dashboard?.feedPage;
+    if (!selectedGroupId || !page?.hasMore) {
+      return;
+    }
+
+    await run("feed-more", async () => {
+      await loadDashboard(selectedGroupId, {
+        feedOffset: page.nextOffset,
+        feedLimit: feedPageSize,
+        appendFeed: true
+      });
     });
   }
 
@@ -5119,6 +5200,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                     busy={busy}
                     dashboard={dashboard}
                     language={language}
+                    onLoadMore={handleLoadMoreFeed}
                     onReact={handleReaction}
                     unit={unit}
                   />

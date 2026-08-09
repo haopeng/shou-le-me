@@ -205,6 +205,12 @@ export type GroupDashboard = {
   };
   members: DashboardMember[];
   feed: FeedItem[];
+  feedPage?: {
+    offset: number;
+    limit: number;
+    nextOffset: number;
+    hasMore: boolean;
+  };
   joinRequests?: GroupJoinRequest[];
 };
 
