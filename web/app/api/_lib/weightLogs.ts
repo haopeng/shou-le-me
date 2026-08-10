@@ -1,4 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import {
+  findWeightRecordBreakthroughs,
+  type WeightRecordBreakthrough
+} from "@/lib/weightRecords";
 import { cleanText } from "./server";
 
 type MembershipRow = {
@@ -32,6 +36,7 @@ export type WeightLogWriteResult = {
   feedCount: number;
   latestChanged: boolean;
   latestRecordedOn: string | null;
+  recordBreakthroughs: WeightRecordBreakthrough[];
 };
 
 function roundTenth(value: number) {
@@ -82,6 +87,20 @@ async function latestUserLog(admin: SupabaseClient, userId: string) {
   }
 
   return data as WeightLogRow | null;
+}
+
+async function userWeightLogs(admin: SupabaseClient, userId: string) {
+  const { data, error } = await admin
+    .from("slim_weight_logs")
+    .select("id,recorded_on,weight_kg")
+    .eq("user_id", userId)
+    .order("recorded_on", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []) as WeightLogRow[];
 }
 
 async function userMemberships(admin: SupabaseClient, userId: string) {
@@ -179,7 +198,16 @@ export async function saveUserWeightLog({
   weightKg: number;
   note: unknown;
 }): Promise<WeightLogWriteResult> {
-  const beforeLatest = await latestUserLog(admin, userId);
+  const beforeLogs = await userWeightLogs(admin, userId);
+  const beforeLatest = beforeLogs.at(-1) ?? null;
+  const recordBreakthroughs = findWeightRecordBreakthroughs(
+    beforeLogs.map((log) => ({
+      recordedOn: log.recorded_on,
+      weightKg: Number(log.weight_kg)
+    })),
+    recordedOn,
+    weightKg
+  );
 
   const { error } = await admin.from("slim_weight_logs").upsert(
     {
@@ -219,7 +247,8 @@ export async function saveUserWeightLog({
     ).length,
     feedCount,
     latestChanged: latestRowsDiffer(beforeLatest, afterLatest),
-    latestRecordedOn: afterLatest?.recorded_on ?? null
+    latestRecordedOn: afterLatest?.recorded_on ?? null,
+    recordBreakthroughs
   };
 }
 
@@ -270,6 +299,7 @@ export async function deleteUserWeightLog({
     ).length,
     feedCount,
     latestChanged: latestRowsDiffer(beforeLatest, afterLatest),
-    latestRecordedOn: afterLatest?.recorded_on ?? null
+    latestRecordedOn: afterLatest?.recorded_on ?? null,
+    recordBreakthroughs: []
   };
 }

@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import {
+  type CSSProperties,
   type ChangeEvent,
   type FormEvent,
   type RefObject,
@@ -48,6 +49,11 @@ import {
   withLanguageParam
 } from "@/lib/i18n";
 import { hasSupabaseConfig, supabase, supabaseAnonKey, supabaseUrl } from "@/lib/supabaseClient";
+import {
+  findWeightRecordBreakthroughs,
+  type WeightRecordBreakthrough,
+  type WeightRecordKind
+} from "@/lib/weightRecords";
 import type {
   AppStatusDashboard,
   FeedItem,
@@ -79,6 +85,7 @@ type WeightSuccessNotice = {
   previousDeltaKg: number | null;
   appliedGroupCount: number;
   latestChanged: boolean;
+  recordBreakthroughs: WeightRecordBreakthrough[];
 };
 
 type LogFormState = {
@@ -856,6 +863,51 @@ function formatDeltaText(deltaKg: number, unit: WeightUnit, language: Language) 
   return `${sign}${formatNumber(value)} ${copy[language][unit]}`;
 }
 
+const recordFireworkBursts = [
+  { left: "17%", top: "22%", delay: 0 },
+  { left: "83%", top: "18%", delay: 180 },
+  { left: "25%", top: "68%", delay: 360 },
+  { left: "75%", top: "64%", delay: 520 }
+];
+const recordFireworkColors = ["#ff563f", "#ffb84d", "#24c6bc", "#635bff", "#ec2f55"];
+
+function RecordFireworks({ recordKind }: { recordKind: WeightRecordKind }) {
+  const burstCount = recordKind === "all_time" ? 4 : recordKind === "year" ? 3 : 2;
+
+  return (
+    <div className="record-fireworks" aria-hidden="true">
+      {recordFireworkBursts.slice(0, burstCount).map((burst, burstIndex) => (
+        <span
+          className="record-firework-burst"
+          key={`${burst.left}-${burst.top}`}
+          style={
+            {
+              left: burst.left,
+              top: burst.top,
+              "--burst-delay": `${burst.delay}ms`
+            } as CSSProperties
+          }
+        >
+          {Array.from({ length: 12 }, (_, particleIndex) => (
+            <i
+              key={particleIndex}
+              style={
+                {
+                  "--angle": `${particleIndex * 30}deg`,
+                  "--distance": `-${62 + ((particleIndex + burstIndex) % 3) * 18}px`,
+                  "--delay": `${burst.delay + (particleIndex % 2) * 45}ms`,
+                  "--particle-color":
+                    recordFireworkColors[(particleIndex + burstIndex) % recordFireworkColors.length]
+                } as CSSProperties
+              }
+            />
+          ))}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 function WeightSuccessToast({
   notice,
   unit,
@@ -868,6 +920,13 @@ function WeightSuccessToast({
   onDismiss: () => void;
 }) {
   const t = copy[language];
+  const primaryRecord = notice.recordBreakthroughs[0] ?? null;
+  const recordLabels: Record<WeightRecordKind, string> = {
+    all_time: t.weightRecordAllTime,
+    year: t.weightRecordYear,
+    month: t.weightRecordMonth,
+    week: t.weightRecordWeek
+  };
   const moveKg =
     notice.latestDeltaKg !== null && notice.previousDeltaKg !== null
       ? roundOne(notice.latestDeltaKg - notice.previousDeltaKg)
@@ -891,54 +950,76 @@ function WeightSuccessToast({
     notice.appliedGroupCount > 0
       ? t.logSavedAll.replace("{count}", String(notice.appliedGroupCount))
       : t.logSavedPrivate;
-
-  useEffect(() => {
-    const timeout = window.setTimeout(onDismiss, 6000);
-    return () => window.clearTimeout(timeout);
-  }, [notice.id, onDismiss]);
+  const recordImprovement = primaryRecord
+    ? t.weightRecordImprovement.replace(
+        "{value}",
+        `${formatNumber(toDisplayWeight(primaryRecord.improvementKg, unit))} ${t[unit]}`
+      )
+    : null;
 
   return (
-    <aside className="weight-success-toast" role="status" aria-live="polite" aria-atomic="true">
-      <div className="weight-success-icon" aria-hidden="true">
-        <Sparkles size={22} />
-      </div>
-      <div className="weight-success-content">
-        <div className="weight-success-heading">
-          <strong>{t.weightSuccessTitle}</strong>
-          {notice.groupName && <span>{notice.groupName}</span>}
-        </div>
-        {notice.latestDeltaKg !== null && (
-          <div className="weight-success-metrics">
-            <div>
-              <span>{t.weightSuccessLatest}</span>
-              <strong className={notice.latestDeltaKg <= 0 ? "good" : "warm"}>
-                {formatDeltaText(notice.latestDeltaKg, unit, language)}
-              </strong>
-            </div>
-            <i aria-hidden="true" />
-            <div>
-              <span>{t.weightSuccessPrevious}</span>
-              <strong>
-                {notice.previousDeltaKg === null
-                  ? t.weightSuccessFirstValue
-                  : formatDeltaText(notice.previousDeltaKg, unit, language)}
-              </strong>
-            </div>
-          </div>
-        )}
-        <p>{cheer}</p>
-        <small>{scopeMessage}</small>
-      </div>
-      <button
-        aria-label={t.close}
-        className="weight-success-close"
-        onClick={onDismiss}
-        type="button"
+    <>
+      {primaryRecord && <RecordFireworks recordKind={primaryRecord.kind} />}
+      <aside
+        className={classNames("weight-success-toast", primaryRecord && "record-breakthrough")}
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
       >
-        <X size={17} />
-      </button>
-      <span className="weight-success-timer" aria-hidden="true" />
-    </aside>
+        <div className="weight-success-icon" aria-hidden="true">
+          {primaryRecord ? <Trophy size={22} /> : <Sparkles size={22} />}
+        </div>
+        <div className="weight-success-content">
+          <div className="weight-success-heading">
+            <strong>{primaryRecord ? t.weightRecordTitle : t.weightSuccessTitle}</strong>
+            {notice.groupName && <span>{notice.groupName}</span>}
+          </div>
+          {primaryRecord && (
+            <div className="weight-record-banner">
+              <span>{t.weightRecordBreakthrough}</span>
+              <strong>{recordLabels[primaryRecord.kind]}</strong>
+              <small>{recordImprovement}</small>
+              {notice.recordBreakthroughs.length > 1 && (
+                <div className="weight-record-badges">
+                  {notice.recordBreakthroughs.slice(1).map((record) => (
+                    <span key={record.kind}>{recordLabels[record.kind]}</span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          {notice.latestDeltaKg !== null && (
+            <div className="weight-success-metrics">
+              <div>
+                <span>{t.weightSuccessLatest}</span>
+                <strong className={notice.latestDeltaKg <= 0 ? "good" : "warm"}>
+                  {formatDeltaText(notice.latestDeltaKg, unit, language)}
+                </strong>
+              </div>
+              <i aria-hidden="true" />
+              <div>
+                <span>{t.weightSuccessPrevious}</span>
+                <strong>
+                  {notice.previousDeltaKg === null
+                    ? t.weightSuccessFirstValue
+                    : formatDeltaText(notice.previousDeltaKg, unit, language)}
+                </strong>
+              </div>
+            </div>
+          )}
+          <p>{cheer}</p>
+          <small>{scopeMessage}</small>
+        </div>
+        <button
+          aria-label={t.close}
+          className="weight-success-close"
+          onClick={onDismiss}
+          type="button"
+        >
+          <X size={17} />
+        </button>
+      </aside>
+    </>
   );
 }
 
@@ -2889,7 +2970,6 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
 
   function showMessage(nextMessage: string) {
     setError(null);
-    setWeightSuccess(null);
     setMessage(nextMessage);
   }
 
@@ -3106,10 +3186,15 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
     const weightKg = fromDisplayWeight(logForm.weight, unit);
 
     if (weightKg === null) {
-      setWeightSuccess(null);
       setError(t.errorFallback);
       return;
     }
+
+    const recordBreakthroughs = findWeightRecordBreakthroughs(
+      state.ownLogs,
+      logForm.date,
+      weightKg
+    );
 
     const nextOwnLogs = upsertLocalLog(state.ownLogs, {
       recordedOn: logForm.date,
@@ -3192,7 +3277,8 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
       appliedGroupCount,
       latestChanged:
         previousLatestLog?.recordedOn !== nextLatestLog?.recordedOn ||
-        previousLatestLog?.weightKg !== nextLatestLog?.weightKg
+        previousLatestLog?.weightKg !== nextLatestLog?.weightKg,
+      recordBreakthroughs
     });
   }
 
@@ -3811,7 +3897,6 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     setBusy(action);
     setError(null);
     setMessage(null);
-    setWeightSuccess(null);
     try {
       await task();
     } catch (caught) {
@@ -4328,6 +4413,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       appliedGroupCount?: number;
       readyGroupCount: number;
       latestChanged?: boolean;
+      recordBreakthroughs?: WeightRecordBreakthrough[];
     }>("/api/me/logs", {
       method: "POST",
       body: JSON.stringify({ weightKg, recordedOn, note })
@@ -4345,7 +4431,8 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
       latestDeltaKg: me?.deltaKg ?? null,
       previousDeltaKg: me?.previousDeltaKg ?? null,
       appliedGroupCount,
-      latestChanged: payload.latestChanged ?? true
+      latestChanged: payload.latestChanged ?? true,
+      recordBreakthroughs: payload.recordBreakthroughs ?? []
     });
   }
 
