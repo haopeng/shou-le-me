@@ -2163,18 +2163,41 @@ label span {
   min-height: 48px;
 }
 
+.private-weight-field {
+  display: grid;
+  min-width: 0;
+  gap: 6px;
+}
+
 .base-weight-input {
   position: relative;
 }
 
 .base-weight-input input {
-  padding-right: 74px;
+  padding-right: 112px;
+}
+
+.base-weight-visibility {
+  position: absolute;
+  top: 50%;
+  right: 52px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: var(--radius);
+  color: var(--muted);
+  background: rgba(31, 41, 51, 0.05);
+  padding: 0;
+  transform: translateY(-50%);
 }
 
 .base-weight-input strong {
   position: absolute;
   top: 50%;
-  right: 12px;
+  right: 10px;
   color: var(--hot-deep);
   font-size: 0.82rem;
   font-weight: 950;

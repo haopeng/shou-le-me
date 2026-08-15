@@ -6,6 +6,8 @@ import {
   CalendarDays,
   ChevronDown,
   Clipboard,
+  Eye,
+  EyeOff,
   Flame,
   Gauge,
   Image as ImageIcon,
@@ -2126,6 +2128,55 @@ function Avatar({ name, url }: { name: string; url: string | null }) {
   return <div className="avatar fallback-avatar">{initials(name) || "SY"}</div>;
 }
 
+function PrivateWeightField({
+  id,
+  label,
+  value,
+  onChange,
+  unit,
+  language,
+  autoFocus = false
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  unit: WeightUnit;
+  language: Language;
+  autoFocus?: boolean;
+}) {
+  const t = copy[language];
+  const [revealed, setRevealed] = useState(false);
+
+  return (
+    <div className="private-weight-field">
+      <label htmlFor={id}>{label}</label>
+      <div className="base-weight-input">
+        <input
+          id={id}
+          autoComplete="off"
+          autoFocus={autoFocus}
+          inputMode="decimal"
+          type={revealed ? "text" : "password"}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          required
+        />
+        <button
+          aria-label={revealed ? t.hidePrivateValue : t.showPrivateValue}
+          className="base-weight-visibility"
+          title={revealed ? t.hidePrivateValue : t.showPrivateValue}
+          type="button"
+          onClick={() => setRevealed((current) => !current)}
+        >
+          {revealed ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+        <strong>{t[unit]}</strong>
+      </div>
+    </div>
+  );
+}
+
 function BaseCorrectionModal({
   baseForm,
   setBaseForm,
@@ -2215,24 +2266,15 @@ function BaseCorrectionModal({
           </div>
 
           <div className="base-correction-fields">
-            <label>
-              <span>{t.baseWeight}</span>
-              <div className="base-weight-input">
-                <input
-                  autoFocus
-                  type="number"
-                  inputMode="decimal"
-                  step="0.1"
-                  min="40"
-                  value={baseForm.weight}
-                  onChange={(event) =>
-                    setBaseForm((current) => ({ ...current, weight: event.target.value }))
-                  }
-                  required
-                />
-                <strong>{t[unit]}</strong>
-              </div>
-            </label>
+            <PrivateWeightField
+              autoFocus
+              id="base-correction-weight"
+              label={t.baseWeight}
+              language={language}
+              onChange={(weight) => setBaseForm((current) => ({ ...current, weight }))}
+              unit={unit}
+              value={baseForm.weight}
+            />
             <label>
               <span>{t.baseDate}</span>
               <input
@@ -2333,7 +2375,7 @@ function BaseActionConfirmModal({
           <div>
             <span>{t.weight}</span>
             <strong>
-              {formatNumber(toDisplayWeight(action.weightKg, unit))} {t[unit]}
+              {t.privateValueEntered} · {t[unit]}
             </strong>
           </div>
           <div>
@@ -3752,20 +3794,16 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
                 <span>{t.setBase}</span>
               </div>
               <div className="inline-fields">
-                <label>
-                  <span>{t.baseWeight}</span>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step="0.1"
-                    min="40"
-                    value={baseForm.weight}
-                    onChange={(event) =>
-                      setBaseForm((current) => ({ ...current, weight: event.target.value }))
-                    }
-                    required
-                  />
-                </label>
+                <PrivateWeightField
+                  id="preview-base-weight"
+                  label={t.baseWeight}
+                  language={language}
+                  onChange={(weight) =>
+                    setBaseForm((current) => ({ ...current, weight }))
+                  }
+                  unit={unit}
+                  value={baseForm.weight}
+                />
                 <label>
                   <span>{t.baseDate}</span>
                   <input
@@ -5301,25 +5339,16 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                         {t.baseForGroup} {dashboard.group.name}
                       </p>
                       <div className="inline-fields">
-                        <label>
-                          <span>
-                            {t.baseWeight} ({t[unit]})
-                          </span>
-                          <input
-                            type="number"
-                            inputMode="decimal"
-                            step="0.1"
-                            min="40"
-                            value={baseForm.weight}
-                            onChange={(event) =>
-                              setBaseForm((current) => ({
-                                ...current,
-                                weight: event.target.value
-                              }))
-                            }
-                            required
-                          />
-                        </label>
+                        <PrivateWeightField
+                          id="new-private-base-weight"
+                          label={t.baseWeight}
+                          language={language}
+                          onChange={(weight) =>
+                            setBaseForm((current) => ({ ...current, weight }))
+                          }
+                          unit={unit}
+                          value={baseForm.weight}
+                        />
                         <label>
                           <span>{t.baseDate}</span>
                           <input
