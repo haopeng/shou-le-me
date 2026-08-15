@@ -2248,7 +2248,10 @@ function BaseCorrectionModal({
 
           <div className="base-correction-privacy">
             <ShieldCheck size={18} />
-            <span>{t.fixBasePrivacy}</span>
+            <div>
+              <strong>{groupName}</strong>
+              <span>{t.fixBasePrivacy}</span>
+            </div>
           </div>
 
           <button
@@ -5182,7 +5185,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                     type="button"
                   >
                     <RefreshCcw size={17} />
-                    {t.fixBaseCta}
+                    {t.updateThisGroupBase}
                   </button>
                 )}
               </div>

@@ -962,18 +962,18 @@ label span {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  min-height: 40px;
+  min-height: 44px;
   margin-left: auto;
-  border: 1px solid rgba(255, 86, 63, 0.28);
+  border: 0;
   border-radius: var(--radius);
-  color: var(--hot-deep);
-  background: #fff;
-  padding: 8px 12px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--hot), var(--hot-deep));
+  padding: 9px 14px;
   text-align: center;
-  font-size: 0.82rem;
+  font-size: 0.86rem;
   font-weight: 950;
   line-height: 1.2;
-  box-shadow: 0 8px 18px rgba(217, 45, 69, 0.1);
+  box-shadow: 0 10px 22px rgba(217, 45, 69, 0.22);
 }
 
 .personal-hero {
@@ -2195,6 +2195,20 @@ label span {
   font-size: 0.8rem;
   font-weight: 800;
   line-height: 1.4;
+}
+
+.base-correction-privacy div {
+  display: grid;
+  gap: 2px;
+}
+
+.base-correction-privacy strong {
+  color: var(--ink);
+  font-weight: 950;
+}
+
+.base-correction-privacy span {
+  display: block;
 }
 
 .base-correction-submit {
