@@ -94,6 +94,11 @@ type LogFormState = {
   note: string;
 };
 
+type BaseFormState = {
+  weight: string;
+  date: string;
+};
+
 type PendingBaseAction = {
   weightKg: number;
   date: string;
@@ -2121,6 +2126,144 @@ function Avatar({ name, url }: { name: string; url: string | null }) {
   return <div className="avatar fallback-avatar">{initials(name) || "SY"}</div>;
 }
 
+function BaseCorrectionModal({
+  baseForm,
+  setBaseForm,
+  groupName,
+  unit,
+  language,
+  busy,
+  onUnitChange,
+  onClose,
+  onSubmit
+}: {
+  baseForm: BaseFormState;
+  setBaseForm: (updater: (current: BaseFormState) => BaseFormState) => void;
+  groupName: string;
+  unit: WeightUnit;
+  language: Language;
+  busy: string | null;
+  onUnitChange: (unit: WeightUnit) => void;
+  onClose: () => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  const t = copy[language];
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="member-modal-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <section
+        aria-labelledby="base-correction-title"
+        aria-modal="true"
+        className="member-modal base-correction-modal"
+        role="dialog"
+      >
+        <button
+          aria-label={t.close}
+          className="icon-button ghost member-modal-close"
+          onClick={onClose}
+          type="button"
+        >
+          <X size={18} />
+        </button>
+
+        <div className="base-confirm-head">
+          <RefreshCcw size={22} />
+          <div>
+            <p className="eyebrow">{groupName}</p>
+            <h2 id="base-correction-title">{t.fixBaseTitle}</h2>
+          </div>
+        </div>
+        <p className="base-confirm-copy">{t.fixBaseDescription}</p>
+
+        <form className="base-correction-form" onSubmit={onSubmit}>
+          <div className="base-correction-unit-row">
+            <span>{t.baseInputUnit}</span>
+            <div className="segmented-control" aria-label={t.baseInputUnit}>
+              <button
+                className={unit === "kg" ? "active" : ""}
+                onClick={() => onUnitChange("kg")}
+                type="button"
+              >
+                {t.kg}
+              </button>
+              <button
+                className={unit === "lb" ? "active" : ""}
+                onClick={() => onUnitChange("lb")}
+                type="button"
+              >
+                {t.lb}
+              </button>
+            </div>
+          </div>
+
+          <div className="base-correction-fields">
+            <label>
+              <span>{t.baseWeight}</span>
+              <div className="base-weight-input">
+                <input
+                  autoFocus
+                  type="number"
+                  inputMode="decimal"
+                  step="0.1"
+                  min="40"
+                  value={baseForm.weight}
+                  onChange={(event) =>
+                    setBaseForm((current) => ({ ...current, weight: event.target.value }))
+                  }
+                  required
+                />
+                <strong>{t[unit]}</strong>
+              </div>
+            </label>
+            <label>
+              <span>{t.baseDate}</span>
+              <input
+                type="date"
+                value={baseForm.date}
+                onChange={(event) =>
+                  setBaseForm((current) => ({ ...current, date: event.target.value }))
+                }
+                required
+              />
+            </label>
+          </div>
+
+          <div className="base-correction-privacy">
+            <ShieldCheck size={18} />
+            <span>{t.fixBasePrivacy}</span>
+          </div>
+
+          <button
+            className="primary-button base-correction-submit"
+            disabled={busy === "base"}
+            type="submit"
+          >
+            {t.reviewBaseCorrection}
+          </button>
+        </form>
+      </section>
+    </div>
+  );
+}
+
 function BaseActionConfirmModal({
   action,
   unit,
@@ -3788,6 +3931,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
   const [groupForm, setGroupForm] = useState({ name: "", description: "" });
   const [joinCode, setJoinCode] = useState(inviteCode ?? "");
   const [baseForm, setBaseForm] = useState({ weight: "", date: todayIso() });
+  const [baseCorrectionOpen, setBaseCorrectionOpen] = useState(false);
   const [pendingBaseAction, setPendingBaseAction] = useState<PendingBaseAction | null>(null);
   const [logForm, setLogForm] = useState({ weight: "", date: todayIso(), note: "" });
   const [handledInvite, setHandledInvite] = useState<string | null>(null);
@@ -4032,6 +4176,8 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
 
   function showGroupView(group: Pick<GroupSummary, "id" | "inviteCode">, replace = false) {
     setSelectedMember(null);
+    setBaseCorrectionOpen(false);
+    setPendingBaseAction(null);
     setSelectedGroupId(group.id);
     setActiveView("group");
     writeSelectionUrl({ language, inviteCode: group.inviteCode, replace });
@@ -4057,6 +4203,17 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     if (!focusVisibleLogForm()) {
       pendingQuickLogRef.current = true;
     }
+  }
+
+  function handleOpenBaseCorrection() {
+    if (!dashboard?.me.baseReady) {
+      return;
+    }
+
+    setError(null);
+    setMessage(null);
+    setBaseForm({ weight: "", date: dashboard.me.baseDate ?? todayIso() });
+    setBaseCorrectionOpen(true);
   }
 
   useEffect(() => {
@@ -4449,6 +4606,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
     }
 
     if (dashboard?.me.baseReady) {
+      setBaseCorrectionOpen(false);
       setPendingBaseAction({ weightKg: baseWeightKg, date: baseForm.date });
       return;
     }
@@ -5017,6 +5175,16 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                 <span>{t.viewingGroup}</span>
                 <strong>{dashboard.group.name}</strong>
                 <small>{t.groupViewHint}</small>
+                {readyToCompete && (
+                  <button
+                    className="base-correction-trigger"
+                    onClick={handleOpenBaseCorrection}
+                    type="button"
+                  >
+                    <RefreshCcw size={17} />
+                    {t.fixBaseCta}
+                  </button>
+                )}
               </div>
 
               <section className="group-hero">
@@ -5103,53 +5271,21 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                       weightInputRef={logWeightInputRef}
                     />
 
-                    <details className="action-panel base-adjust-panel">
-                      <summary>
-                        <span>
-                          <ShieldCheck size={18} />
-                          {t.adjustBase}
-                        </span>
-                        <small>{t.baseAdjustHint}</small>
-                      </summary>
-                      <form className="base-adjust-form" onSubmit={handleBase}>
-                        <p className="micro-copy panel-hint">
-                          {t.baseForGroup} {dashboard.group.name}
-                        </p>
-                        <div className="inline-fields">
-                          <label>
-                            <span>{t.baseWeight}</span>
-                            <input
-                              type="number"
-                              inputMode="decimal"
-                              step="0.1"
-                              min="40"
-                              value={baseForm.weight}
-                              onChange={(event) =>
-                                setBaseForm((current) => ({
-                                  ...current,
-                                  weight: event.target.value
-                                }))
-                              }
-                              required
-                            />
-                          </label>
-                          <label>
-                            <span>{t.baseDate}</span>
-                            <input
-                              type="date"
-                              value={baseForm.date}
-                              onChange={(event) =>
-                                setBaseForm((current) => ({ ...current, date: event.target.value }))
-                              }
-                              required
-                            />
-                          </label>
-                          <button className="secondary-button" disabled={busy === "base"} type="submit">
-                            {t.adjustBase}
-                          </button>
-                        </div>
-                      </form>
-                    </details>
+                    <section className="action-panel base-fix-panel">
+                      <div className="panel-title">
+                        <RefreshCcw size={18} />
+                        <span>{t.fixBaseTitle}</span>
+                      </div>
+                      <p className="micro-copy panel-hint">{t.fixBaseDescription}</p>
+                      <button
+                        className="secondary-button"
+                        onClick={handleOpenBaseCorrection}
+                        type="button"
+                      >
+                        <RefreshCcw size={17} />
+                        {t.fixBaseCta}
+                      </button>
+                    </section>
                   </>
                 ) : (
                   <>
@@ -5163,7 +5299,9 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                       </p>
                       <div className="inline-fields">
                         <label>
-                          <span>{t.baseWeight}</span>
+                          <span>
+                            {t.baseWeight} ({t[unit]})
+                          </span>
                           <input
                             type="number"
                             inputMode="decimal"
@@ -5314,6 +5452,20 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
           )}
         </section>
       </div>
+
+      {baseCorrectionOpen && dashboard && (
+        <BaseCorrectionModal
+          baseForm={baseForm}
+          busy={busy}
+          groupName={dashboard.group.name}
+          language={language}
+          onClose={() => setBaseCorrectionOpen(false)}
+          onSubmit={handleBase}
+          onUnitChange={setUnit}
+          setBaseForm={setBaseForm}
+          unit={unit}
+        />
+      )}
 
       {pendingBaseAction && (
         <BaseActionConfirmModal

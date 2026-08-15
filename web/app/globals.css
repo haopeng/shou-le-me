@@ -957,6 +957,25 @@ label span {
   font-weight: 760;
 }
 
+.base-correction-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 40px;
+  margin-left: auto;
+  border: 1px solid rgba(255, 86, 63, 0.28);
+  border-radius: var(--radius);
+  color: var(--hot-deep);
+  background: #fff;
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 0.82rem;
+  font-weight: 950;
+  line-height: 1.2;
+  box-shadow: 0 8px 18px rgba(217, 45, 69, 0.1);
+}
+
 .personal-hero {
   display: flex;
   align-items: center;
@@ -1268,53 +1287,21 @@ label span {
   min-height: 46px;
 }
 
-.base-adjust-panel {
-  align-self: start;
-  border-style: dashed;
-  background: rgba(255, 255, 255, 0.58);
-  box-shadow: 0 10px 24px rgba(31, 41, 51, 0.05);
-}
-
-.base-adjust-panel summary {
+.base-fix-panel {
   display: grid;
-  gap: 5px;
-  cursor: pointer;
-  list-style: none;
+  align-content: start;
+  gap: 12px;
+  border-color: rgba(255, 86, 63, 0.2);
+  background:
+    linear-gradient(135deg, rgba(255, 86, 63, 0.08), rgba(36, 198, 188, 0.08)),
+    rgba(255, 255, 255, 0.86);
 }
 
-.base-adjust-panel summary::-webkit-details-marker {
-  display: none;
-}
-
-.base-adjust-panel summary span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--ink);
-  font-weight: 950;
-}
-
-.base-adjust-panel summary small {
-  color: var(--muted);
-  font-size: 0.78rem;
-  font-weight: 780;
-  line-height: 1.35;
-}
-
-.base-adjust-panel[open] summary {
-  padding-bottom: 12px;
-}
-
-.base-adjust-form {
-  display: grid;
-  gap: 10px;
-  border-top: 1px solid rgba(31, 41, 51, 0.08);
-  padding-top: 12px;
-}
-
-.base-adjust-panel .inline-fields,
-.action-panel:last-child.base-adjust-panel .inline-fields {
-  grid-template-columns: minmax(100px, 1fr) minmax(130px, 1fr) auto;
+.base-fix-panel .secondary-button {
+  width: 100%;
+  min-height: 46px;
+  border-color: rgba(255, 86, 63, 0.24);
+  color: var(--hot-deep);
 }
 
 .quick-log-button {
@@ -2020,7 +2007,7 @@ label span {
 .member-modal-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 20;
+  z-index: 60;
   display: grid;
   place-items: center;
   background: rgba(31, 41, 51, 0.42);
@@ -2066,6 +2053,10 @@ label span {
 
 .base-confirm-modal {
   width: min(540px, 100%);
+}
+
+.base-correction-modal {
+  width: min(580px, 100%);
 }
 
 .base-confirm-head {
@@ -2137,6 +2128,78 @@ label span {
 
 .base-confirm-actions button {
   min-height: 46px;
+}
+
+.base-correction-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.base-correction-unit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(31, 41, 51, 0.08);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.72);
+  padding: 9px 10px 9px 12px;
+}
+
+.base-correction-unit-row > span {
+  color: var(--ink);
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.base-correction-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.base-correction-fields input {
+  min-height: 48px;
+}
+
+.base-weight-input {
+  position: relative;
+}
+
+.base-weight-input input {
+  padding-right: 74px;
+}
+
+.base-weight-input strong {
+  position: absolute;
+  top: 50%;
+  right: 12px;
+  color: var(--hot-deep);
+  font-size: 0.82rem;
+  font-weight: 950;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.base-correction-privacy {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: start;
+  gap: 9px;
+  border: 1px solid rgba(36, 198, 188, 0.22);
+  border-radius: var(--radius);
+  color: #176e69;
+  background: rgba(36, 198, 188, 0.09);
+  padding: 11px 12px;
+  font-size: 0.8rem;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.base-correction-submit {
+  width: 100%;
+  min-height: 48px;
 }
 
 .member-photo-button {
@@ -2744,9 +2807,7 @@ label span {
 
   .inline-fields,
   .action-panel:last-child .inline-fields,
-  .log-action-panel .inline-fields,
-  .base-adjust-panel .inline-fields,
-  .action-panel:last-child.base-adjust-panel .inline-fields {
+  .log-action-panel .inline-fields {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -2823,11 +2884,20 @@ label span {
   .inline-fields,
   .action-panel:last-child .inline-fields,
   .log-action-panel .inline-fields,
-  .base-adjust-panel .inline-fields,
-  .action-panel:last-child.base-adjust-panel .inline-fields,
+  .base-correction-fields,
   .base-confirm-summary,
   .base-confirm-actions {
     grid-template-columns: 1fr;
+  }
+
+  .base-correction-trigger {
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .base-correction-unit-row {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .config-brand {
