@@ -1287,6 +1287,25 @@ label span {
   min-height: 46px;
 }
 
+.weight-input-with-unit {
+  position: relative;
+}
+
+.weight-input-with-unit input {
+  padding-right: 68px;
+}
+
+.weight-input-with-unit strong {
+  position: absolute;
+  top: 50%;
+  right: 13px;
+  color: #158d98;
+  font-size: 0.82rem;
+  font-weight: 950;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
 .base-fix-panel {
   display: grid;
   align-content: start;

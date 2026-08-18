@@ -1176,6 +1176,7 @@ function LogWeightForm({
   onSubmit,
   busy,
   language,
+  unit,
   title,
   hint,
   formRef,
@@ -1186,6 +1187,7 @@ function LogWeightForm({
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   busy: string | null;
   language: Language;
+  unit: WeightUnit;
   title: string;
   hint?: string;
   formRef?: RefObject<HTMLFormElement | null>;
@@ -1203,18 +1205,21 @@ function LogWeightForm({
       <div className="inline-fields">
         <label>
           <span>{t.weight}</span>
-          <input
-            ref={weightInputRef}
-            type="number"
-            inputMode="decimal"
-            step="0.1"
-            min="40"
-            value={logForm.weight}
-            onChange={(event) =>
-              setLogForm((current) => ({ ...current, weight: event.target.value }))
-            }
-            required
-          />
+          <div className="weight-input-with-unit">
+            <input
+              ref={weightInputRef}
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min="40"
+              value={logForm.weight}
+              onChange={(event) =>
+                setLogForm((current) => ({ ...current, weight: event.target.value }))
+              }
+              required
+            />
+            <strong>{t[unit]}</strong>
+          </div>
         </label>
         <label>
           <span>{t.today}</span>
@@ -1607,6 +1612,7 @@ function PersonalDashboardView({
         onSubmit={onLog}
         setLogForm={setLogForm}
         title={t.logWeight}
+        unit={unit}
         formRef={formRef}
         weightInputRef={weightInputRef}
       />
@@ -3829,17 +3835,20 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
               <div className="inline-fields">
                 <label>
                   <span>{t.weight}</span>
-                  <input
-                    type="number"
-                    inputMode="decimal"
-                    step="0.1"
-                    min="40"
-                    value={logForm.weight}
-                    onChange={(event) =>
-                      setLogForm((current) => ({ ...current, weight: event.target.value }))
-                    }
-                    required
-                  />
+                  <div className="weight-input-with-unit">
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      step="0.1"
+                      min="40"
+                      value={logForm.weight}
+                      onChange={(event) =>
+                        setLogForm((current) => ({ ...current, weight: event.target.value }))
+                      }
+                      required
+                    />
+                    <strong>{t[unit]}</strong>
+                  </div>
                 </label>
                 <label>
                   <span>{t.today}</span>
@@ -5308,6 +5317,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                       onSubmit={handleLog}
                       setLogForm={setLogForm}
                       title={t.logWeight}
+                      unit={unit}
                       formRef={logFormRef}
                       weightInputRef={logWeightInputRef}
                     />
@@ -5374,6 +5384,7 @@ export default function SlimYetGroupApp({ inviteCode }: SlimYetGroupAppProps) {
                       onSubmit={handleLog}
                       setLogForm={setLogForm}
                       title={t.logWeight}
+                      unit={unit}
                       formRef={logFormRef}
                       weightInputRef={logWeightInputRef}
                     />
