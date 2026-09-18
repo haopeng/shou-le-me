@@ -2,12 +2,15 @@ name: iOS verification
 on:
   workflow_dispatch:
   push:
-    branches: [main, 'codex/ios-native']
+    branches: [main]
     paths: ['SlimYet/**', 'SlimYet.xcodeproj/**', 'Shared/**', 'Tests/**', 'Package.swift', '.github/workflows/ios.yml']
   pull_request:
     paths: ['SlimYet/**', 'SlimYet.xcodeproj/**', 'Shared/**', 'Tests/**', 'Package.swift', '.github/workflows/ios.yml']
 permissions:
   contents: read
+concurrency:
+  group: ios-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   ios:
     runs-on: macos-latest

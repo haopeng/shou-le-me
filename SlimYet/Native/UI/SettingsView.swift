@@ -104,14 +104,16 @@ struct EditProfileSheet: View {
     @State private var photo: PhotosPickerItem?
     @State private var uploading = false
     var body: some View {
+        let busy = uploading
+        let photoTitle = store.text("Choose photo", "选择照片")
         NavigationStack {
             Form {
                 Section {
                     HStack(spacing: 16) {
                         MemberAvatar(name: store.profile?.displayName ?? "", url: store.profile?.avatarUrl, size: 72)
                         PhotosPicker(selection: $photo, matching: .images, photoLibrary: .shared()) {
-                            if uploading { ProgressView() }
-                            else { Label(store.text("Choose photo", "选择照片"), systemImage: "photo") }
+                            if busy { ProgressView() }
+                            else { Label(photoTitle, systemImage: "photo") }
                         }.disabled(uploading)
                     }.padding(.vertical, 8)
                     TextField(store.text("Name", "姓名"), text: $name).textContentType(.name)
