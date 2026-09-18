@@ -7,7 +7,8 @@ enum CloudFailure: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .message(let message): message
-        case .signedOut: "Please sign in again. / 请重新登录。"
+        case .signedOut:
+            (UserDefaults.standard.string(forKey: "native.language") ?? Locale.preferredLanguages.first ?? "en").hasPrefix("zh") ? "请重新登录。" : "Please sign in again."
         }
     }
 }

@@ -60,6 +60,7 @@ struct AsyncActionButton: View {
     let action: @MainActor () async throws -> Void
     @Environment(NativeStore.self) private var store
     @State private var busy = false
+    @State private var errorMessage: String?
     var body: some View {
         Button(role: role) {
             busy = true
@@ -67,7 +68,7 @@ struct AsyncActionButton: View {
                 defer { busy = false }
                 do { try await action() }
                 catch is CancellationError { }
-                catch { store.message = error.localizedDescription }
+                catch { errorMessage = error.localizedDescription }
             }
         } label: {
             HStack {
@@ -76,6 +77,9 @@ struct AsyncActionButton: View {
                 Text(title)
             }.frame(minHeight: 30)
         }.disabled(busy)
+        .alert(store.text("Could not complete", "暂时无法完成"), isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+            Button(store.text("OK", "知道了")) { errorMessage = nil }
+        } message: { Text(errorMessage ?? "") }
     }
 }
 

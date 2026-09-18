@@ -24,7 +24,7 @@ struct NativeSettingsView: View {
                         Spacer()
                         Image(systemName: "chevron.right").font(.caption).foregroundStyle(.tertiary)
                     }.padding(.vertical, 5)
-                }
+                }.accessibilityIdentifier("settings.profile")
             }
             Section(store.text("Preferences", "偏好设置")) {
                 Picker(store.text("Weight unit", "体重单位"), selection: $store.unit) {

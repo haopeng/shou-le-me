@@ -58,5 +58,9 @@ final class SlimYetUITests: XCTestCase {
         app.tabBars.buttons["设置"].tap()
         XCTAssertTrue(app.staticTexts["体重单位"].waitForExistence(timeout: 5))
         screenshot("07-settings-zh", app: app)
+        app.buttons["settings.profile"].tap()
+        XCTAssertTrue(app.buttons["保存资料"].waitForExistence(timeout: 5))
+        app.buttons["保存资料"].tap()
+        XCTAssertTrue(app.alerts.firstMatch.waitForExistence(timeout: 5))
     }
 }
