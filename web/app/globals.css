@@ -1271,12 +1271,18 @@ label span {
   align-items: end;
 }
 
-.action-panel:last-child .inline-fields {
-  grid-template-columns: minmax(94px, 0.8fr) minmax(130px, 0.85fr) minmax(130px, 1fr) auto;
+.log-action-panel .inline-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.log-action-panel .inline-fields {
-  grid-template-columns: minmax(94px, 0.8fr) minmax(130px, 0.85fr) minmax(130px, 1fr) auto;
+.log-action-panel .inline-fields > label:first-child,
+.log-action-panel .inline-fields > button {
+  grid-column: 1 / -1;
+}
+
+.log-action-panel .inline-fields > button {
+  min-height: 46px;
+  white-space: nowrap;
 }
 
 .log-action-panel {
@@ -1289,10 +1295,12 @@ label span {
 
 .weight-input-with-unit {
   position: relative;
+  min-width: 0;
 }
 
 .weight-input-with-unit input {
   padding-right: 68px;
+  font-size: 1rem;
 }
 
 .weight-input-with-unit strong {
@@ -2862,7 +2870,6 @@ label span {
   }
 
   .inline-fields,
-  .action-panel:last-child .inline-fields,
   .log-action-panel .inline-fields {
     grid-template-columns: 1fr 1fr;
   }
@@ -2938,7 +2945,6 @@ label span {
   .trend-card-grid,
   .setup-points,
   .inline-fields,
-  .action-panel:last-child .inline-fields,
   .log-action-panel .inline-fields,
   .base-correction-fields,
   .base-confirm-summary,

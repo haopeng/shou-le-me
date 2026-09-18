@@ -3827,54 +3827,15 @@ function LocalPreviewApp({ inviteCode }: SlimYetGroupAppProps) {
               </div>
             </form>
 
-            <form className="action-panel" onSubmit={handleLog}>
-              <div className="panel-title">
-                <Weight size={18} />
-                <span>{t.logWeight}</span>
-              </div>
-              <div className="inline-fields">
-                <label>
-                  <span>{t.weight}</span>
-                  <div className="weight-input-with-unit">
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      step="0.1"
-                      min="40"
-                      value={logForm.weight}
-                      onChange={(event) =>
-                        setLogForm((current) => ({ ...current, weight: event.target.value }))
-                      }
-                      required
-                    />
-                    <strong>{t[unit]}</strong>
-                  </div>
-                </label>
-                <label>
-                  <span>{t.today}</span>
-                  <input
-                    type="date"
-                    value={logForm.date}
-                    onChange={(event) =>
-                      setLogForm((current) => ({ ...current, date: event.target.value }))
-                    }
-                    required
-                  />
-                </label>
-                <label>
-                  <span>{t.note}</span>
-                  <input
-                    value={logForm.note}
-                    onChange={(event) =>
-                      setLogForm((current) => ({ ...current, note: event.target.value }))
-                    }
-                  />
-                </label>
-                <button className="primary-button aqua" type="submit">
-                  {t.saveLog}
-                </button>
-              </div>
-            </form>
+            <LogWeightForm
+              busy={null}
+              language={language}
+              logForm={logForm}
+              onSubmit={handleLog}
+              setLogForm={setLogForm}
+              title={t.logWeight}
+              unit={unit}
+            />
           </section>
 
           {!readyToCompete && <div className="nudge-bar">{t.noBase}</div>}
