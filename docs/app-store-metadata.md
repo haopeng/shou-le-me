@@ -69,7 +69,7 @@ Keywords: weight,journal,tracker,progress,group,habit,checkin,trends,private
 - Bundle ID: `com.haopeng.slimyet`.
 - Version: 1.0; build: 1 (increment for subsequent uploads).
 - Age rating: complete Apple's current questionnaire truthfully, including user-generated content and health/fitness subject matter. The owner must decide the intended audience.
-- Privacy labels: linked health data, name, email, user ID, photos, and other user content; used for app functionality; not tracking. Validate against the final archive and hosting configuration.
+- Privacy labels: linked health data, name, email, user ID, photos, other user content, and customer support; used for app functionality; not tracking. Validate against the final archive and hosting configuration.
 
 ## Suggested Screenshot Order
 
