@@ -9,9 +9,12 @@ let package = Package(
         .macOS(.v14)
     ],
     products: [
-        .library(name: "SlimYetCore", targets: ["SlimYetCore"])
+        .library(name: "SlimYetCore", targets: ["SlimYetCore"]),
+        .library(name: "SlimYetCloudCore", targets: ["SlimYetCloudCore"])
     ],
     targets: [
+        .target(name: "SlimYetCloudCore", path: "SlimYet/Native/Domain"),
+        .testTarget(name: "SlimYetCloudCoreTests", dependencies: ["SlimYetCloudCore"], path: "Tests/SlimYetCloudCoreTests"),
         .target(
             name: "SlimYetCore",
             path: "Shared/SlimYetCore/Sources/SlimYetCore"

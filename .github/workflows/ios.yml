@@ -1,0 +1,34 @@
+name: iOS verification
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, 'codex/ios-native']
+    paths: ['SlimYet/**', 'SlimYet.xcodeproj/**', 'Shared/**', 'Tests/**', 'Package.swift', '.github/workflows/ios.yml']
+  pull_request:
+    paths: ['SlimYet/**', 'SlimYet.xcodeproj/**', 'Shared/**', 'Tests/**', 'Package.swift', '.github/workflows/ios.yml']
+permissions:
+  contents: read
+jobs:
+  ios:
+    runs-on: macos-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toolchain
+        run: xcodebuild -version
+      - name: Core unit tests
+        run: swift test
+      - name: Choose iPhone simulator
+        run: |
+          UDID=$(xcrun simctl list devices available -j | ruby -rjson -e 'd=JSON.parse(STDIN.read)["devices"].values.flatten.find { |v| v["name"].include?("iPhone") }; abort "No iPhone simulator" unless d; puts d["udid"]')
+          echo "SIMULATOR_ID=$UDID" >> "$GITHUB_ENV"
+      - name: Build and test native UI
+        run: xcodebuild test -project SlimYet.xcodeproj -scheme SlimYet -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -resultBundlePath build/iOS-Tests.xcresult CODE_SIGNING_ALLOWED=NO
+      - name: Release compile
+        run: xcodebuild build -project SlimYet.xcodeproj -scheme SlimYet -configuration Release -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: iOS-test-results
+          path: build/iOS-Tests.xcresult
+          retention-days: 7

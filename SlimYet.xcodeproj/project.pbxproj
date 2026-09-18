@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3B0000000000000000000001 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 3B0000000000000000000002 /* Supabase */; };
 		2A0000000000000000000113 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2A0000000000000000000213 /* Assets.xcassets */; };
 		2A0000000000000000000101 /* SlimYetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000000000000000000201 /* SlimYetApp.swift */; };
 		2A0000000000000000000102 /* WeightEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A0000000000000000000202 /* WeightEntry.swift */; };
@@ -25,6 +26,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		3C0000000000000000000001 /* SlimYetUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = SlimYetUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A0000000000000000000200 /* SlimYet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SlimYet.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2A0000000000000000000201 /* SlimYetApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlimYetApp.swift; sourceTree = "<group>"; };
 		2A0000000000000000000202 /* WeightEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightEntry.swift; sourceTree = "<group>"; };
@@ -50,15 +52,30 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3B0000000000000000000001 /* Supabase in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		3C0000000000000000000002 /* SlimYetUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Tests/SlimYetUITests;
+			sourceTree = "<group>";
+		};
+		3B0000000000000000000004 /* Native */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Native;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
 /* Begin PBXGroup section */
 		2A0000000000000000000400 = {
 			isa = PBXGroup;
 			children = (
+				3C0000000000000000000002 /* SlimYetUITests */,
 				2A0000000000000000000401 /* SlimYet */,
 				2A0000000000000000000409 /* SlimYetCore */,
 				2A0000000000000000000410 /* Products */,
@@ -68,6 +85,7 @@
 		2A0000000000000000000401 /* SlimYet */ = {
 			isa = PBXGroup;
 			children = (
+				3B0000000000000000000004 /* Native */,
 				2A0000000000000000000402 /* App */,
 				2A0000000000000000000403 /* Models */,
 				2A0000000000000000000404 /* Views */,
@@ -137,6 +155,7 @@
 		2A0000000000000000000410 /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				3C0000000000000000000001 /* SlimYetUITests.xctest */,
 				2A0000000000000000000200 /* SlimYet.app */,
 			);
 			name = Products;
@@ -145,6 +164,18 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		3C0000000000000000000003 /* SlimYetUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 3C0000000000000000000004;
+			buildPhases = (3C0000000000000000000005, 3C0000000000000000000006, 3C0000000000000000000007);
+			buildRules = ();
+			dependencies = (3C0000000000000000000008);
+			fileSystemSynchronizedGroups = (3C0000000000000000000002);
+			name = SlimYetUITests;
+			productName = SlimYetUITests;
+			productReference = 3C0000000000000000000001;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		2A0000000000000000000500 /* SlimYet */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2A0000000000000000000803 /* Build configuration list for PBXNativeTarget "SlimYet" */;
@@ -158,6 +189,8 @@
 			dependencies = (
 			);
 			name = SlimYet;
+			fileSystemSynchronizedGroups = (3B0000000000000000000004 /* Native */);
+			packageProductDependencies = (3B0000000000000000000002 /* Supabase */);
 			productName = SlimYet;
 			productReference = 2A0000000000000000000200 /* SlimYet.app */;
 			productType = "com.apple.product-type.application";
@@ -172,6 +205,7 @@
 				LastSwiftUpdateCheck = 2600;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
+					3C0000000000000000000003 = { CreatedOnToolsVersion = 27.0; TestTargetID = 2A0000000000000000000500; };
 					2A0000000000000000000500 = {
 						CreatedOnToolsVersion = 26.5;
 					};
@@ -187,17 +221,20 @@
 				"zh-Hans",
 			);
 			mainGroup = 2A0000000000000000000400;
+			packageReferences = (3B0000000000000000000003 /* supabase-swift */);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 2A0000000000000000000410 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				2A0000000000000000000500 /* SlimYet */,
+				3C0000000000000000000003 /* SlimYetUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		3C0000000000000000000007 = { isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		2A0000000000000000000303 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -211,6 +248,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		3C0000000000000000000005 = { isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		2A0000000000000000000301 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -254,6 +292,34 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		3C0000000000000000000010 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				CODE_SIGN_STYLE = Automatic;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.haopeng.slimyet.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = SlimYet;
+			};
+			name = Debug;
+		};
+		3C0000000000000000000011 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GENERATE_INFOPLIST_FILE = YES;
+				CODE_SIGN_STYLE = Automatic;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.haopeng.slimyet.uitests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = SlimYet;
+			};
+			name = Release;
+		};
 		2A0000000000000000000801 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -380,6 +446,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SlimYet/Configuration/Info.plist;
+				CODE_SIGN_ENTITLEMENTS = SlimYet/Configuration/SlimYet.entitlements;
 				INFOPLIST_KEY_CFBundleDisplayName = "$(PRODUCT_NAME)";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -388,7 +456,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.haopeng.slimyet;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -408,6 +476,8 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "";
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SlimYet/Configuration/Info.plist;
+				CODE_SIGN_ENTITLEMENTS = SlimYet/Configuration/SlimYet.entitlements;
 				INFOPLIST_KEY_CFBundleDisplayName = "$(PRODUCT_NAME)";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -416,7 +486,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 0.1;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.haopeng.slimyet;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -431,6 +501,12 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		3C0000000000000000000004 = {
+			isa = XCConfigurationList;
+			buildConfigurations = (3C0000000000000000000010, 3C0000000000000000000011);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		2A0000000000000000000800 /* Build configuration list for PBXProject "SlimYet" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -450,6 +526,26 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		3B0000000000000000000003 /* supabase-swift */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/supabase/supabase-swift.git";
+			requirement = { kind = exactVersion; version = 2.55.2; };
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		3B0000000000000000000002 /* Supabase */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3B0000000000000000000003 /* supabase-swift */;
+			productName = Supabase;
+		};
+/* End XCSwiftPackageProductDependency section */
+
+		3C0000000000000000000006 = { isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
+		3C0000000000000000000008 = { isa = PBXTargetDependency; target = 2A0000000000000000000500; targetProxy = 3C0000000000000000000009; };
+		3C0000000000000000000009 = { isa = PBXContainerItemProxy; containerPortal = 2A0000000000000000000600; proxyType = 1; remoteGlobalIDString = 2A0000000000000000000500; remoteInfo = SlimYet; };
 	};
 	rootObject = 2A0000000000000000000600 /* Project object */;
 }
