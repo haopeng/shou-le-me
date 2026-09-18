@@ -5,7 +5,7 @@ struct GroupActivityRow: View {
     let groupId: String
     let activity: CloudActivity
     let profile: () -> Void
-    let changed: () async -> Void
+    let changed: @MainActor () async -> Void
     @State private var reacting = false
     @State private var showReactors = false
     private let reactions: [(String, String)] = [("like", "hand.thumbsup.fill"), ("heart", "heart.fill"), ("care", "hands.clap.fill")]

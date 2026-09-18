@@ -1,8 +1,14 @@
 # SlimYet / 瘦了么
 
-SlimYet is a local-only iOS weight journal focused on finding encouraging trend highlights automatically.
+SlimYet is a private weight journal and friendly group progress app, with a native SwiftUI iOS client and a Next.js web client sharing the same Supabase backend.
 
-## What Is Built
+## Native iOS 1.0
+
+The active app now opens `SlimYet/Native/UI/NativeRootView.swift`: My Journey, Groups, Top5, and Settings. It uses native Charts, photo selection, share sheets, and weight-entry sheets rather than embedding the website. The legacy local-only screens and SwiftData store are preserved but are not uploaded automatically.
+
+See [the iOS release guide](docs/ios-release.md) for authentication, signing, privacy, moderation, App Store prerequisites, and verification. App Store submission still requires the owner's Apple Developer configuration and release acceptance testing.
+
+## Original Local Prototype
 
 - SwiftUI iOS app scaffold in `SlimYet.xcodeproj`
 - Manual weight entry with date and optional note
@@ -28,7 +34,7 @@ Privacy model: each person has one private weight history, but each group member
 
 See `web/README.md` and `web/supabase/schema.sql` for setup.
 
-## Local Storage Design
+## Legacy Local Storage Design
 
 The app uses SwiftData instead of CSV because the dataset is tiny but query/update semantics matter. SwiftData stores records locally in SQLite, needs no backend, and gives us native migration support later.
 

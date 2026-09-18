@@ -44,8 +44,8 @@ struct NativeSettingsView: View {
                 if !store.blockedUsers.isEmpty {
                     Button(store.text("Unblock members (\(store.blockedUsers.count))", "取消屏蔽成员（\(store.blockedUsers.count)）"), systemImage: "person.fill.checkmark") { store.unblockAll() }
                 }
-                Link(destination: CloudAPI.origin.appending(path: "privacy")) { Label(store.text("Privacy policy", "隐私政策"), systemImage: "hand.raised") }
-                Link(destination: CloudAPI.origin.appending(path: "terms")) { Label(store.text("Terms", "服务条款"), systemImage: "doc.text") }
+                Link(destination: CloudAPI.origin.appending(path: "privacy").appending(queryItems: [URLQueryItem(name: "lang", value: store.language)])) { Label(store.text("Privacy policy", "隐私政策"), systemImage: "hand.raised") }
+                Link(destination: CloudAPI.origin.appending(path: "terms").appending(queryItems: [URLQueryItem(name: "lang", value: store.language)])) { Label(store.text("Terms", "服务条款"), systemImage: "doc.text") }
                 Button(store.text("Help & support", "帮助与支持"), systemImage: "questionmark.circle") { support = true }
             }
             Section {

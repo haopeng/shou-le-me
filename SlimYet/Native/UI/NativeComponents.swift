@@ -57,7 +57,7 @@ struct AsyncActionButton: View {
     let title: String
     var role: ButtonRole? = nil
     var symbol: String? = nil
-    let action: () async throws -> Void
+    let action: @MainActor () async throws -> Void
     @Environment(NativeStore.self) private var store
     @State private var busy = false
     var body: some View {

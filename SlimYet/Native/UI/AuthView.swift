@@ -73,9 +73,9 @@ struct NativeAuthView: View {
                 Section {
                     NavigationLink("Top5") { TopGroupsView() }
                     HStack {
-                        Link(store.text("Privacy", "隐私政策"), destination: CloudAPI.origin.appending(path: "privacy"))
+                        Link(store.text("Privacy", "隐私政策"), destination: CloudAPI.origin.appending(path: "privacy").appending(queryItems: [URLQueryItem(name: "lang", value: store.language)]))
                         Spacer()
-                        Link(store.text("Terms", "服务条款"), destination: CloudAPI.origin.appending(path: "terms"))
+                        Link(store.text("Terms", "服务条款"), destination: CloudAPI.origin.appending(path: "terms").appending(queryItems: [URLQueryItem(name: "lang", value: store.language)]))
                         Spacer()
                         Button(store.chinese ? "English" : "中文") { store.language = store.chinese ? "en" : "zh" }
                     }.font(.footnote)

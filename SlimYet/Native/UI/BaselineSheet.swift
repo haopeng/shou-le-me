@@ -66,9 +66,6 @@ struct BaselineSheet: View {
             } message: { Text(store.text("Your entire delta history in \(group.name) will be recalculated. The chosen day's private weight record will also update.", "将重新计算「\(group.name)」里的全部变化记录，并更新所选日期的个人体重记录。")) }
             .sheet(isPresented: $logInstead) { LogEntrySheet(showActualWeight: false) }
             .onAppear { unit = store.unit }
-            .onChange(of: unit) { old, new in
-                if let value = weight.decimalValue { weight = String(format: "%.1f", new.displayValue(fromKilograms: old.kilograms(fromDisplayValue: value))) }
-            }
             .interactiveDismissDisabled(busy)
         }
     }

@@ -1,12 +1,18 @@
 import Foundation
 
 enum Day {
-    static func string(_ date: Date, calendar: Calendar = .current) -> String {
+    static var calendar: Calendar {
+        var value = Calendar(identifier: .gregorian)
+        value.timeZone = .current
+        return value
+    }
+
+    static func string(_ date: Date, calendar: Calendar = Day.calendar) -> String {
         let parts = calendar.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", parts.year!, parts.month!, parts.day!)
     }
 
-    static func date(_ string: String, calendar: Calendar = .current) -> Date {
+    static func date(_ string: String, calendar: Calendar = Day.calendar) -> Date {
         let parts = string.prefix(10).split(separator: "-").compactMap { Int($0) }
         guard parts.count == 3 else { return .distantPast }
         return calendar.date(from: DateComponents(year: parts[0], month: parts[1], day: parts[2], hour: 12)) ?? .distantPast
@@ -17,7 +23,7 @@ enum ChartPeriod: String, CaseIterable { case daily, weekly, monthly, best }
 enum ChartRange: Int, CaseIterable { case week = 7, month = 30, year = 365, all = 0 }
 
 enum ChartMath {
-    static func filtered(_ points: [DeltaPoint], range: ChartRange, now: Date = Date(), calendar: Calendar = .current) -> [DeltaPoint] {
+    static func filtered(_ points: [DeltaPoint], range: ChartRange, now: Date = Date(), calendar: Calendar = Day.calendar) -> [DeltaPoint] {
         let ordered = points.sorted { $0.date < $1.date }
         guard range != .all, let start = calendar.date(byAdding: .day, value: -(range.rawValue - 1), to: calendar.startOfDay(for: now)) else { return ordered }
         let first = Day.string(start, calendar: calendar)

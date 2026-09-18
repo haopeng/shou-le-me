@@ -67,11 +67,6 @@ struct LogEntrySheet: View {
                 .confirmationDialog(store.text("Replace this day's check-in?", "替换当天的记录？"), isPresented: $confirmReplace, titleVisibility: .visible) {
                     Button(store.text("Update check-in", "更新当天记录")) { Task { await save() } }
                 } message: { Text(store.text("There is already a weight for this date. Its record and every group's trend will update.", "这一天已有记录。保存后将更新当天记录，以及所有小组的变化趋势。")) }
-                .onChange(of: unit) { old, new in
-                    if let number = weight.decimalValue {
-                        weight = String(format: "%.1f", new.displayValue(fromKilograms: old.kilograms(fromDisplayValue: number)))
-                    }
-                }
             }
         }
         .onAppear {
@@ -91,6 +86,7 @@ struct LogEntrySheet: View {
         guard let kg = kilograms, !busy else { return }
         busy = true
         error = nil
+        store.unit = unit
         defer { busy = false }
         do { try await store.saveWeight(kg: kg, date: Day.string(date), note: String(note.prefix(500))) }
         catch { self.error = error.localizedDescription }

@@ -20,15 +20,24 @@ jobs:
         run: swift test
       - name: Choose iPhone simulator
         run: |
-          UDID=$(xcrun simctl list devices available -j | ruby -rjson -e 'd=JSON.parse(STDIN.read)["devices"].values.flatten.find { |v| v["name"].include?("iPhone") }; abort "No iPhone simulator" unless d; puts d["udid"]')
+          UDID=$(xcrun simctl list devices available -j | ruby -rjson -e 'phones=JSON.parse(STDIN.read)["devices"].values.flatten.select { |v| v["name"].include?("iPhone") }; d=phones.find { |v| v["name"].include?("Pro Max") } || phones.first; abort "No iPhone simulator" unless d; puts d["udid"]')
           echo "SIMULATOR_ID=$UDID" >> "$GITHUB_ENV"
       - name: Build and test native UI
         run: xcodebuild test -project SlimYet.xcodeproj -scheme SlimYet -destination "platform=iOS Simulator,id=$SIMULATOR_ID" -resultBundlePath build/iOS-Tests.xcresult CODE_SIGNING_ALLOWED=NO
       - name: Release compile
         run: xcodebuild build -project SlimYet.xcodeproj -scheme SlimYet -configuration Release -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
+      - name: Export UI screenshots
+        if: always()
+        run: |
+          if [ -d build/iOS-Tests.xcresult ]; then
+            xcrun xcresulttool export attachments --path build/iOS-Tests.xcresult --output-path build/screenshots
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: iOS-test-results
-          path: build/iOS-Tests.xcresult
+          path: |
+            build/iOS-Tests.xcresult
+            build/screenshots
+            SlimYet.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
           retention-days: 7
